@@ -157,6 +157,21 @@
             <option value="point">Point</option>
           </select>
         </div>
+        <div class="control-group">
+          <button id="grid-btn" class="btn btn-secondary btn-sm">Grille</button>
+          <select id="grid-step-select">
+            <option value="1">1 %</option>
+            <option value="2.5" selected>2.5 %</option>
+            <option value="5">5 %</option>
+          </select>
+        </div>
+
+        <div class="control-group style-control">
+          <label>Style</label>
+          <select id="style-select"></select>
+          <button id="save-style-btn" class="icon-btn" title="Enregistrer le style actuel">＋</button>
+          <button id="delete-style-btn" class="icon-btn danger" title="Supprimer ce style">✕</button>
+        </div>
       </div>
     </div>
 
@@ -165,7 +180,7 @@
       <div class="word-panel-header">
         <h3>Vocabulaire</h3>
         <span id="word-count" class="word-count"></span>
-        <button id="import-btn" class="btn btn-secondary btn-sm" title="Importer depuis CSV">↓ CSV</button>
+        <button id="import-btn" class="btn btn-secondary btn-sm" title="Importer depuis CSV">↓ Import CSV</button>
         <button id="clear-markers-btn" class="btn btn-danger btn-sm" title="Supprimer tous les marqueurs">✕ Marqueurs</button>
         <button id="add-word-btn" class="btn btn-primary btn-sm">＋ Ajouter</button>
       </div>

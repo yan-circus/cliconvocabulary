@@ -18,6 +18,8 @@ const drag = {
 
 const state = {
   screen:         'auth',
+  gridEnabled:    false,
+  gridStep:       2.5,
   families:       [],
   selectedFamily: null,
   levels:         [],
@@ -248,6 +250,7 @@ async function openEditor(lvl) {
   state.selectedArrow = -1;
   state.isDirty       = false;
   document.getElementById('image-area').classList.remove('can-place-point', 'can-place-arrow');
+  document.getElementById('style-select').value = '';
 
   document.getElementById('editor-title').textContent                     = `${state.selectedFamily?.name || ''} / ${lvl.title || lvl.name}`;
   document.getElementById('editor-marker-size').value                     = lvl.marker_size         || 16;
@@ -304,6 +307,10 @@ function renderWordList() {
   state.words.forEach((w, i) => list.appendChild(buildWordItem(w, i)));
   document.getElementById('word-count').textContent =
     `${state.words.length} mot${state.words.length !== 1 ? 's' : ''}`;
+  if (state.selectedWord >= 0) {
+    const el = list.querySelectorAll('.word-item')[state.selectedWord];
+    el?.scrollIntoView({ block: 'nearest' });
+  }
   updatePlacementHint();
 }
 
@@ -336,6 +343,15 @@ function buildWordItem(w, i) {
       <button class="icon-btn danger" title="Supprimer le mot">✕</button>
     </div>
   `;
+
+  // Sélection du mot (clic sur l'item hors boutons)
+  item.addEventListener('click', () => {
+    state.selectedWord  = i;
+    state.editMode      = null;
+    state.selectedArrow = -1;
+    document.getElementById('image-area').classList.remove('can-place-point', 'can-place-arrow');
+    renderWordList(); renderMarkers(); updatePlacementHint();
+  });
 
   // Mode buttons
   item.querySelector('[data-mode="point"]').addEventListener('click', e => {
@@ -464,6 +480,23 @@ function renderMarkers() {
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.style.opacity = (parseInt(document.getElementById('editor-marker-opacity').value) ?? 100) / 100;
 
+  if (state.gridEnabled) {
+    for (let p = 0; p <= 100; p += state.gridStep) {
+      const gx = imgRect.x + (p / 100) * imgRect.width;
+      const gy = imgRect.y + (p / 100) * imgRect.height;
+      const vl = mkSvg('line');
+      vl.setAttribute('x1', gx); vl.setAttribute('y1', imgRect.y);
+      vl.setAttribute('x2', gx); vl.setAttribute('y2', imgRect.y + imgRect.height);
+      vl.setAttribute('stroke', 'rgba(108,92,231,0.35)'); vl.setAttribute('stroke-width', '1');
+      svg.appendChild(vl);
+      const hl = mkSvg('line');
+      hl.setAttribute('x1', imgRect.x); hl.setAttribute('y1', gy);
+      hl.setAttribute('x2', imgRect.x + imgRect.width); hl.setAttribute('y2', gy);
+      hl.setAttribute('stroke', 'rgba(108,92,231,0.35)'); hl.setAttribute('stroke-width', '1');
+      svg.appendChild(hl);
+    }
+  }
+
   const size    = parseInt(document.getElementById('editor-marker-size').value)        || 16;
   const aSize   = parseInt(document.getElementById('editor-arrow-size').value)         || 10;
   const color   = document.getElementById('editor-marker-color').value                 || '#000000';
@@ -566,6 +599,11 @@ function renderMarkers() {
 
 function mkSvg(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
 
+function snapToGrid(pct) {
+  if (!state.gridEnabled) return pct;
+  return Math.round(pct / state.gridStep) * state.gridStep;
+}
+
 function handleImageAreaClick(e) {
   if (drag.justDragged) return;
   const img = document.getElementById('editor-image');
@@ -587,8 +625,8 @@ function handleImageAreaClick(e) {
   // No active placement tool → click on empty area deselects
   if (state.selectedWord < 0 || !state.editMode) { deselect(); return; }
 
-  const pctX = Math.round(((cx - imgRect.x) / imgRect.width)  * 1000) / 10;
-  const pctY = Math.round(((cy - imgRect.y) / imgRect.height) * 1000) / 10;
+  const pctX = snapToGrid(Math.round(((cx - imgRect.x) / imgRect.width)  * 1000) / 10);
+  const pctY = snapToGrid(Math.round(((cy - imgRect.y) / imgRect.height) * 1000) / 10);
   const w    = state.words[state.selectedWord];
 
   snapshot();
@@ -746,6 +784,84 @@ function undo() {
   markDirty(); renderWordList(); renderMarkers(); updatePlacementHint();
 }
 
+// ── Styles (localStorage presets) ────────────────────────────────────────────
+
+const STYLES_KEY = 'cv-marker-styles';
+
+function getStyles() {
+  try { return JSON.parse(localStorage.getItem(STYLES_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveStylesLS(styles) {
+  localStorage.setItem(STYLES_KEY, JSON.stringify(styles));
+}
+
+function currentStyleSettings() {
+  return {
+    marker_size:         parseInt(document.getElementById('editor-marker-size').value)         || 16,
+    arrow_size:          parseInt(document.getElementById('editor-arrow-size').value)          || 10,
+    marker_opacity:      parseInt(document.getElementById('editor-marker-opacity').value)      || 100,
+    marker_color:        document.getElementById('editor-marker-color').value                  || '#000000',
+    marker_stroke_color: document.getElementById('editor-marker-stroke-color').value           || '#ffffff',
+    marker_stroke_width: parseInt(document.getElementById('editor-marker-stroke-width').value) || 2,
+    line_style:          document.getElementById('editor-line-style').value                    || 'solid',
+    arrow_head:          document.getElementById('editor-arrow-head').value                    || 'point',
+  };
+}
+
+function renderStyleSelect() {
+  const sel = document.getElementById('style-select');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— rappeler —</option>';
+  getStyles().forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.name; opt.textContent = s.name;
+    if (s.name === prev) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function applyStyle(style) {
+  document.getElementById('editor-marker-size').value              = style.marker_size;
+  document.getElementById('marker-size-value').textContent         = `${style.marker_size} px`;
+  document.getElementById('editor-arrow-size').value               = style.arrow_size;
+  document.getElementById('arrow-size-value').textContent          = `${style.arrow_size} px`;
+  document.getElementById('editor-marker-opacity').value           = style.marker_opacity;
+  document.getElementById('marker-opacity-value').textContent      = `${style.marker_opacity} %`;
+  document.getElementById('editor-marker-color').value             = style.marker_color;
+  document.getElementById('editor-marker-stroke-color').value      = style.marker_stroke_color;
+  document.getElementById('editor-marker-stroke-width').value      = style.marker_stroke_width;
+  document.getElementById('editor-stroke-width-value').textContent = `${style.marker_stroke_width} px`;
+  document.getElementById('editor-line-style').value               = style.line_style;
+  document.getElementById('editor-arrow-head').value               = style.arrow_head;
+  Object.assign(state.level, style);
+  markDirty(); renderMarkers();
+}
+
+function handleSaveStyle() {
+  const name = prompt('Nom du style :');
+  if (!name?.trim()) return;
+  const styles = getStyles().filter(s => s.name !== name.trim());
+  styles.push({ name: name.trim(), ...currentStyleSettings() });
+  saveStylesLS(styles);
+  renderStyleSelect();
+  document.getElementById('style-select').value = name.trim();
+}
+
+function handleDeleteStyle() {
+  const sel = document.getElementById('style-select');
+  if (!sel.value) return;
+  if (!confirm(`Supprimer le style "${sel.value}" ?`)) return;
+  saveStylesLS(getStyles().filter(s => s.name !== sel.value));
+  renderStyleSelect();
+}
+
+function handleStyleSelect(e) {
+  const style = getStyles().find(s => s.name === e.target.value);
+  if (style) applyStyle(style);
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -791,6 +907,23 @@ document.addEventListener('DOMContentLoaded', () => {
   );
   document.getElementById('replace-image-input').addEventListener('change', handleReplaceImage);
 
+  // Grid
+  document.getElementById('grid-btn').addEventListener('click', () => {
+    state.gridEnabled = !state.gridEnabled;
+    document.getElementById('grid-btn').classList.toggle('active', state.gridEnabled);
+    renderMarkers();
+  });
+  document.getElementById('grid-step-select').addEventListener('change', e => {
+    state.gridStep = parseFloat(e.target.value);
+    if (state.gridEnabled) renderMarkers();
+  });
+
+  // Styles
+  renderStyleSelect();
+  document.getElementById('style-select').addEventListener('change', handleStyleSelect);
+  document.getElementById('save-style-btn').addEventListener('click', handleSaveStyle);
+  document.getElementById('delete-style-btn').addEventListener('click', handleDeleteStyle);
+
   // Marker controls
   document.getElementById('editor-marker-size').addEventListener('input', onSizeChange);
   document.getElementById('editor-arrow-size').addEventListener('input', onArrowSizeChange);
@@ -824,8 +957,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cRect = document.getElementById('image-area').getBoundingClientRect();
     const cx    = Math.max(imgRect.x, Math.min(imgRect.x + imgRect.width,  e.clientX - cRect.left));
     const cy    = Math.max(imgRect.y, Math.min(imgRect.y + imgRect.height, e.clientY - cRect.top));
-    const pctX  = Math.round(((cx - imgRect.x) / imgRect.width)  * 1000) / 10;
-    const pctY  = Math.round(((cy - imgRect.y) / imgRect.height) * 1000) / 10;
+    const pctX  = snapToGrid(Math.round(((cx - imgRect.x) / imgRect.width)  * 1000) / 10);
+    const pctY  = snapToGrid(Math.round(((cy - imgRect.y) / imgRect.height) * 1000) / 10);
     const w     = state.words[drag.wordIdx];
     if (drag.type === 'point') {
       w.point = { x: pctX, y: pctY };

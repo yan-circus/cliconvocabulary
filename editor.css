@@ -496,6 +496,11 @@ body {
 }
 .image-controls select:focus { border-color: var(--primary); }
 
+.style-control { margin-left: auto; }
+#style-select  { max-width: 130px; }
+
+#grid-btn.active { background: var(--primary); color: #fff; }
+
 /* Word panel */
 .word-panel {
   width: 300px;
