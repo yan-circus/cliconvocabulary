@@ -124,23 +124,37 @@
           <span id="arrow-size-value">10 px</span>
         </div>
 
+        <div class="control-group control-stack">
+          <div class="stack-row">
+            <label>Fond</label>
+            <input id="editor-marker-color" type="color" value="#000000">
+          </div>
+          <div class="stack-row stack-sel">
+            <label>Sél.</label>
+            <input id="editor-selected-fill" type="color" value="#ffffff">
+          </div>
+        </div>
+
+        <div class="control-group control-stack">
+          <div class="stack-row">
+            <label>Contour</label>
+            <input id="editor-marker-stroke-color" type="color" value="#ffffff">
+            <input id="editor-marker-stroke-width" type="range" min="1" max="6" value="2">
+            <span id="editor-stroke-width-value">2 px</span>
+          </div>
+          <div class="stack-row stack-sel">
+            <label>Sél.</label>
+            <input id="editor-selected-stroke" type="color" value="#6c5ce7">
+          </div>
+        </div>
+
         <div class="control-group">
           <label>Opacité</label>
           <input id="editor-marker-opacity" type="range" min="50" max="100" step="5" value="100">
           <span id="marker-opacity-value">100 %</span>
         </div>
 
-        <div class="control-group">
-          <label>Couleur</label>
-          <input id="editor-marker-color" type="color" value="#000000">
-        </div>
-
-        <div class="control-group">
-          <label>Contour</label>
-          <input id="editor-marker-stroke-color" type="color" value="#ffffff">
-          <input id="editor-marker-stroke-width" type="range" min="1" max="6" value="2">
-          <span id="editor-stroke-width-value">2 px</span>
-        </div>
+        <button id="sel-color-btn" class="btn btn-secondary btn-sm" title="Personnaliser les couleurs de sélection">Couleur sél.</button>
 
         <div class="control-group">
           <label>Trait</label>

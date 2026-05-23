@@ -474,7 +474,9 @@ body {
 #marker-size-value { min-width: 38px; font-size: 12px; }
 
 #editor-marker-color,
-#editor-marker-stroke-color {
+#editor-marker-stroke-color,
+#editor-selected-fill,
+#editor-selected-stroke {
   width: 34px;
   height: 26px;
   border: 1px solid var(--border);
@@ -495,6 +497,21 @@ body {
   outline: none;
 }
 .image-controls select:focus { border-color: var(--primary); }
+
+.control-stack { flex-direction: column; align-items: flex-start; gap: 4px; }
+.stack-row { display: flex; align-items: center; gap: 7px; }
+.stack-row.stack-sel { display: none; }
+.sel-color-active .stack-row.stack-sel { display: flex; }
+
+@keyframes marker-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.45); }
+}
+.marker-selected-pulse {
+  animation: marker-pulse 1.1s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
 
 .style-control { margin-left: auto; }
 #style-select  { max-width: 130px; }

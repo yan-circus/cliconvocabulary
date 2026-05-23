@@ -17,9 +17,10 @@ const drag = {
 };
 
 const state = {
-  screen:         'auth',
-  gridEnabled:    false,
-  gridStep:       2.5,
+  screen:           'auth',
+  gridEnabled:      false,
+  gridStep:         2.5,
+  selColorOverride: false,
   families:       [],
   selectedFamily: null,
   levels:         [],
@@ -253,12 +254,17 @@ async function openEditor(lvl) {
   document.getElementById('style-select').value = '';
 
   document.getElementById('editor-title').textContent                     = `${state.selectedFamily?.name || ''} / ${lvl.title || lvl.name}`;
-  document.getElementById('editor-marker-size').value                     = lvl.marker_size         || 16;
+  document.getElementById('editor-marker-size').value                     = lvl.marker_size          || 16;
   document.getElementById('marker-size-value').textContent                = `${lvl.marker_size || 16} px`;
-  document.getElementById('editor-arrow-size').value                      = lvl.arrow_size          || 10;
+  document.getElementById('editor-arrow-size').value                      = lvl.arrow_size           || 10;
   document.getElementById('arrow-size-value').textContent                 = `${lvl.arrow_size || 10} px`;
-  document.getElementById('editor-marker-opacity').value                  = lvl.marker_opacity      ?? 100;
+  document.getElementById('editor-marker-opacity').value                  = lvl.marker_opacity       ?? 100;
   document.getElementById('marker-opacity-value').textContent             = `${lvl.marker_opacity ?? 100} %`;
+  document.getElementById('editor-selected-fill').value                   = lvl.selected_fill        || '#ffffff';
+  document.getElementById('editor-selected-stroke').value                 = lvl.selected_stroke      || '#6c5ce7';
+  state.selColorOverride = false;
+  document.querySelector('.image-controls').classList.remove('sel-color-active');
+  document.getElementById('sel-color-btn').classList.remove('active');
   document.getElementById('editor-marker-color').value                    = lvl.marker_color        || '#000000';
   document.getElementById('editor-marker-stroke-color').value             = lvl.marker_stroke_color || '#ffffff';
   document.getElementById('editor-marker-stroke-width').value             = lvl.marker_stroke_width || 2;
@@ -478,7 +484,10 @@ function renderMarkers() {
   const W = svg.clientWidth  || svg.getBoundingClientRect().width;
   const H = svg.clientHeight || svg.getBoundingClientRect().height;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.style.opacity = (parseInt(document.getElementById('editor-marker-opacity').value) ?? 100) / 100;
+
+  const opacity   = (parseInt(document.getElementById('editor-marker-opacity').value) || 100) / 100;
+  const selFill   = document.getElementById('editor-selected-fill').value               || '#ffffff';
+  const selStroke = document.getElementById('editor-selected-stroke').value             || '#6c5ce7';
 
   if (state.gridEnabled) {
     for (let p = 0; p <= 100; p += state.gridStep) {
@@ -497,9 +506,9 @@ function renderMarkers() {
     }
   }
 
-  const size    = parseInt(document.getElementById('editor-marker-size').value)        || 16;
-  const aSize   = parseInt(document.getElementById('editor-arrow-size').value)         || 10;
-  const color   = document.getElementById('editor-marker-color').value                 || '#000000';
+  const size   = parseInt(document.getElementById('editor-marker-size').value) || 16;
+  const aSize  = parseInt(document.getElementById('editor-arrow-size').value)  || 10;
+  const color  = document.getElementById('editor-marker-color').value         || '#000000';
   const sColor  = document.getElementById('editor-marker-stroke-color').value          || '#ffffff';
   const sWidth  = parseInt(document.getElementById('editor-marker-stroke-width').value)|| 2;
   const lStyle  = document.getElementById('editor-line-style').value                   || 'solid';
@@ -507,17 +516,21 @@ function renderMarkers() {
 
   state.words.forEach((w, i) => {
     if (!w.point) return;
-    const isSel  = i === state.selectedWord;
-    const pFill  = isSel ? '#ffffff' : color;
-    const pStroke = isSel ? color : sColor;
+    const isSel   = i === state.selectedWord;
+    const pFill   = isSel ? (state.selColorOverride ? selFill   : lightenColor(color))  : color;
+    const pStroke = isSel ? (state.selColorOverride ? selStroke : lightenColor(sColor)) : sColor;
+
+    const wG = mkSvg('g');
+    wG.setAttribute('opacity', isSel ? 1 : opacity);
+
     const { px, py } = toSvgPos(w.point, imgRect);
 
     // ── Arrows (behind point) ────────────────────────────────────────────────
     (w.arrows || []).forEach((a, ai) => {
       const { px: ax, py: ay } = toSvgPos(a, imgRect);
       const isSelArrow = isSel && ai === state.selectedArrow;
-      const aFill   = (isSel && isSelArrow) ? '#ffffff' : pFill;
-      const aStroke = (isSel && isSelArrow) ? color : pStroke;
+      const aFill   = isSelArrow ? selStroke : pFill;
+      const aStroke = isSelArrow ? selFill   : pStroke;
 
       // Line
       const line = mkSvg('line');
@@ -527,7 +540,7 @@ function renderMarkers() {
       line.setAttribute('stroke-width', Math.max(1, sWidth - 1));
       if (lStyle === 'dashed') line.setAttribute('stroke-dasharray', '7,4');
       line.setAttribute('stroke-linecap', 'round');
-      svg.appendChild(line);
+      wG.appendChild(line);
 
       // Arrowhead (filled mode only)
       if (aHead === 'filled') {
@@ -541,7 +554,7 @@ function renderMarkers() {
         const poly = mkSvg('polygon');
         poly.setAttribute('points', `${ax},${ay} ${p1x},${p1y} ${p2x},${p2y}`);
         poly.setAttribute('fill', aFill); poly.setAttribute('stroke', aStroke); poly.setAttribute('stroke-width', '1');
-        svg.appendChild(poly);
+        wG.appendChild(poly);
       }
 
       // Arrow tip dot (point mode = always visible; filled mode = visible only when selected)
@@ -570,7 +583,7 @@ function renderMarkers() {
         renderWordList(); renderMarkers(); updatePlacementHint();
       });
       tipG.addEventListener('click', e => { e.stopPropagation(); });
-      svg.appendChild(tipG);
+      wG.appendChild(tipG);
     });
 
     // ── Point (on top) ───────────────────────────────────────────────────────
@@ -580,6 +593,7 @@ function renderMarkers() {
     ptC.setAttribute('r', size / 2);
     ptC.setAttribute('fill', pFill); ptC.setAttribute('stroke', pStroke); ptC.setAttribute('stroke-width', sWidth);
     ptG.appendChild(ptC);
+    if (isSel) ptG.classList.add('marker-selected-pulse');
     ptG.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       e.preventDefault();
@@ -593,7 +607,8 @@ function renderMarkers() {
       renderWordList(); renderMarkers(); updatePlacementHint();
     });
     ptG.addEventListener('click', e => { e.stopPropagation(); });
-    svg.appendChild(ptG);
+    wG.appendChild(ptG);
+    svg.appendChild(wG);
   });
 }
 
@@ -675,9 +690,11 @@ async function saveLevel() {
   setLoading(btn, true);
   try {
     await editorService.updateLevelMeta(state.level.docId, {
-      marker_size:         parseInt(document.getElementById('editor-marker-size').value)        || 16,
-      arrow_size:          parseInt(document.getElementById('editor-arrow-size').value)         || 10,
-      marker_opacity:      parseInt(document.getElementById('editor-marker-opacity').value)    ?? 100,
+      marker_size:     parseInt(document.getElementById('editor-marker-size').value)       || 16,
+      arrow_size:      parseInt(document.getElementById('editor-arrow-size').value)        || 10,
+      marker_opacity:  parseInt(document.getElementById('editor-marker-opacity').value)    ?? 100,
+      selected_fill:   document.getElementById('editor-selected-fill').value               || '#ffffff',
+      selected_stroke: document.getElementById('editor-selected-stroke').value             || '#6c5ce7',
       marker_color:        document.getElementById('editor-marker-color').value                 || '#000000',
       marker_stroke_color: document.getElementById('editor-marker-stroke-color').value          || '#ffffff',
       marker_stroke_width: parseInt(document.getElementById('editor-marker-stroke-width').value)|| 2,
@@ -759,6 +776,16 @@ function clearAllMarkers() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function lightenColor(hex, factor = 0.55) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lr = Math.round(r + (255 - r) * factor);
+  const lg = Math.round(g + (255 - g) * factor);
+  const lb = Math.round(b + (255 - b) * factor);
+  return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`;
+}
 
 function markDirty() { state.isDirty = true; }
 
@@ -929,7 +956,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('editor-arrow-size').addEventListener('input', onArrowSizeChange);
   document.getElementById('editor-marker-opacity').addEventListener('input', onOpacityChange);
   document.getElementById('editor-marker-stroke-width').addEventListener('input', onStrokeWidthChange);
-  ['editor-marker-color','editor-marker-stroke-color','editor-line-style','editor-arrow-head']
+
+  document.getElementById('sel-color-btn').addEventListener('click', () => {
+    state.selColorOverride = !state.selColorOverride;
+    document.querySelector('.image-controls').classList.toggle('sel-color-active', state.selColorOverride);
+    document.getElementById('sel-color-btn').classList.toggle('active', state.selColorOverride);
+    renderMarkers();
+  });
+  ['editor-marker-color','editor-marker-stroke-color','editor-selected-fill','editor-selected-stroke','editor-line-style','editor-arrow-head']
     .forEach(id => document.getElementById(id).addEventListener('input', onAnyControlChange));
 
   // Image click
