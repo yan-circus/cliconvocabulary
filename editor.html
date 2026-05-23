@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CliConVocabulary — Éditeur</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+
+<!-- ══ Auth ══════════════════════════════════════════════════════════════════ -->
+<div class="screen active" data-screen="auth">
+  <div class="auth-container">
+    <div class="auth-card">
+      <h1>CliConVocabulary</h1>
+      <p class="subtitle">Éditeur de niveaux — connexion requise</p>
+      <form id="login-form">
+        <div class="form-group">
+          <label>Email</label>
+          <input id="login-email" type="email" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input id="login-pw" type="password" autocomplete="current-password" required>
+        </div>
+        <button id="login-btn" type="submit" class="btn btn-primary btn-full">Se connecter</button>
+      </form>
+      <div class="divider">ou</div>
+      <button id="google-login-btn" class="btn btn-google btn-full">Continuer avec Google</button>
+      <div id="auth-error" class="error-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Reauth ═════════════════════════════════════════════════════════════════ -->
+<div class="screen" data-screen="reauth">
+  <div class="auth-container">
+    <div class="auth-card">
+      <h1>Accès superviseur</h1>
+      <p class="subtitle">Confirmez votre identité pour accéder à l'éditeur.</p>
+      <form id="reauth-form">
+        <div id="reauth-pw-group" class="form-group">
+          <label>Mot de passe</label>
+          <input id="reauth-pw" type="password" autocomplete="current-password">
+        </div>
+        <button id="reauth-submit-btn" type="submit" class="btn btn-primary btn-full">Confirmer</button>
+      </form>
+      <p id="reauth-google-hint" style="display:none;color:var(--text-muted);font-size:13px;margin-bottom:10px;">
+        Cliquez sur le bouton ci-dessous pour confirmer votre identité Google.
+      </p>
+      <div class="divider">ou</div>
+      <button id="google-reauth-btn" class="btn btn-google btn-full">Confirmer avec Google</button>
+      <div id="reauth-error" class="error-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Browser ════════════════════════════════════════════════════════════════ -->
+<div class="screen" data-screen="browser">
+  <header class="browser-header">
+    <h1>CliConVocabulary — Éditeur de niveaux</h1>
+    <button id="logout-btn" class="btn btn-secondary">Déconnexion</button>
+  </header>
+  <div class="browser-body">
+
+    <aside class="family-sidebar">
+      <div class="sidebar-header">
+        <span>Familles</span>
+        <button id="add-family-btn" class="icon-btn" title="Nouvelle famille">＋</button>
+      </div>
+      <div id="family-list" class="family-list"></div>
+    </aside>
+
+    <section class="level-area">
+      <div class="level-area-header">
+        <h2 id="family-title">Sélectionnez une famille</h2>
+      </div>
+      <div id="level-grid" class="level-grid"></div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ══ Editor ═════════════════════════════════════════════════════════════════ -->
+<div class="screen" data-screen="editor">
+  <header class="editor-header">
+    <button id="back-btn" class="btn btn-secondary">← Retour</button>
+    <h2 id="editor-title"></h2>
+    <button id="save-btn" class="btn btn-success">Sauvegarder</button>
+  </header>
+
+  <div class="editor-body">
+
+    <!-- Image panel -->
+    <div class="image-panel">
+      <div id="image-area" class="image-area">
+        <img id="editor-image" alt="Image du niveau" draggable="false">
+        <svg id="markers-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="image-placeholder" class="visible">
+          <span style="font-size:2rem">🖼</span>
+          <span>Aucune image chargée</span>
+          <button class="btn btn-secondary btn-sm"
+                  onclick="document.getElementById('replace-image-input').click()">
+            Charger une image
+          </button>
+        </div>
+      </div>
+
+      <div class="placement-hint" id="placement-hint"></div>
+
+      <div class="image-controls">
+        <button id="replace-image-btn" class="btn btn-secondary btn-sm">📂 Changer l'image</button>
+        <input id="replace-image-input" type="file" accept="image/jpeg,image/png,image/webp" style="display:none">
+
+        <div class="control-group">
+          <label>● Taille</label>
+          <input id="editor-marker-size" type="range" min="8" max="40" value="16">
+          <span id="marker-size-value">16 px</span>
+        </div>
+
+        <div class="control-group">
+          <label>→ Taille</label>
+          <input id="editor-arrow-size" type="range" min="6" max="30" value="10">
+          <span id="arrow-size-value">10 px</span>
+        </div>
+
+        <div class="control-group">
+          <label>Opacité</label>
+          <input id="editor-marker-opacity" type="range" min="50" max="100" step="5" value="100">
+          <span id="marker-opacity-value">100 %</span>
+        </div>
+
+        <div class="control-group">
+          <label>Couleur</label>
+          <input id="editor-marker-color" type="color" value="#000000">
+        </div>
+
+        <div class="control-group">
+          <label>Contour</label>
+          <input id="editor-marker-stroke-color" type="color" value="#ffffff">
+          <input id="editor-marker-stroke-width" type="range" min="1" max="6" value="2">
+          <span id="editor-stroke-width-value">2 px</span>
+        </div>
+
+        <div class="control-group">
+          <label>Trait</label>
+          <select id="editor-line-style">
+            <option value="solid">Plein</option>
+            <option value="dashed">Pointillé</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>Flèche</label>
+          <select id="editor-arrow-head">
+            <option value="filled">Pleine</option>
+            <option value="point">Point</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Word panel -->
+    <div class="word-panel">
+      <div class="word-panel-header">
+        <h3>Vocabulaire</h3>
+        <span id="word-count" class="word-count"></span>
+        <button id="import-btn" class="btn btn-secondary btn-sm" title="Importer depuis CSV">↓ CSV</button>
+        <button id="clear-markers-btn" class="btn btn-danger btn-sm" title="Supprimer tous les marqueurs">✕ Marqueurs</button>
+        <button id="add-word-btn" class="btn btn-primary btn-sm">＋ Ajouter</button>
+      </div>
+      <div id="import-area" class="import-area">
+        <p class="import-hint">Collez un CSV séparé par <code>;</code> (ligne 1 = en-tête) :</p>
+        <textarea id="import-textarea" spellcheck="false" placeholder="English;Français&#10;Shirt;Chemise&#10;Shoes;Chaussures"></textarea>
+        <div id="import-feedback" class="import-feedback"></div>
+        <div class="import-actions">
+          <button id="import-cancel-btn" class="btn btn-secondary btn-sm">Annuler</button>
+          <button id="import-confirm-btn" class="btn btn-primary btn-sm">Importer</button>
+        </div>
+      </div>
+      <div id="word-list" class="word-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ New level modal ════════════════════════════════════════════════════════ -->
+<div id="new-level-modal" class="modal-overlay">
+  <div class="modal">
+    <h2>Nouveau niveau</h2>
+    <form id="new-level-form">
+      <div class="form-group">
+        <label>Nom du niveau</label>
+        <input id="new-level-name" type="text" placeholder="ex : Les vêtements" required>
+      </div>
+      <div class="form-group">
+        <label>Difficulté</label>
+        <select id="new-level-diff"></select>
+      </div>
+      <div class="form-group">
+        <label>Image (JPG / PNG / WEBP)</label>
+        <input id="new-level-image" type="file" accept="image/jpeg,image/png,image/webp" required>
+        <img id="new-level-preview" alt="Aperçu">
+      </div>
+      <div id="modal-error" class="error-msg"></div>
+      <div class="modal-actions">
+        <button id="cancel-modal-btn" type="button" class="btn btn-secondary">Annuler</button>
+        <button id="create-level-btn" type="submit" class="btn btn-primary">Créer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="editor-firebase-service.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
