@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CliConVocabulary</title>
+  <link rel="stylesheet" href="game.css">
+</head>
+<body>
+<div class="index-layout">
+
+  <!-- ══ Header ══════════════════════════════════════════════════════════════ -->
+  <header class="index-header">
+    <div class="header-left">
+      <button id="close-btn" class="icon-btn" title="Fermer">✕</button>
+      <span class="app-title">CliConVocabulary</span>
+    </div>
+    <div class="header-right">
+      <button id="settings-btn" class="icon-btn" title="Paramètres">⚙</button>
+      <button id="help-btn"     class="icon-btn" title="Aide">?</button>
+      <div class="auth-menu-wrap">
+        <button id="auth-menu-btn" class="icon-btn" title="Compte">👤</button>
+        <div id="auth-dropdown" class="auth-dropdown hidden">
+          <div id="auth-dd-info" class="auth-dd-info hidden"></div>
+
+          <!-- Not signed in -->
+          <div id="auth-signin-section">
+            <form id="dd-login-form">
+              <div class="form-group">
+                <label>Email</label>
+                <input id="dd-email" type="email" autocomplete="email" required>
+              </div>
+              <div class="form-group">
+                <label>Mot de passe</label>
+                <input id="dd-pw" type="password" autocomplete="current-password" required>
+              </div>
+              <button id="dd-login-btn" type="submit" class="btn btn-primary btn-full">Connexion</button>
+            </form>
+            <div class="divider">ou</div>
+            <button id="dd-google-btn" class="btn btn-google btn-full">Continuer avec Google</button>
+            <div id="dd-error" class="error-msg"></div>
+          </div>
+
+          <!-- Signed in -->
+          <div id="auth-connected-section" class="hidden">
+            <div id="auth-editor-link" class="hidden" style="margin-bottom:8px">
+              <a href="editor.html" class="btn btn-secondary btn-full">🖊 Éditeur de niveaux</a>
+            </div>
+            <button id="dd-logout-btn" class="btn btn-ghost btn-full">Déconnexion</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ Family tabs ═════════════════════════════════════════════════════════ -->
+  <div class="family-tabs-bar">
+    <button id="tabs-prev" class="icon-btn" style="flex-shrink:0">‹</button>
+    <div id="family-tabs-scroll" class="family-tabs-scroll"></div>
+    <button id="tabs-next" class="icon-btn" style="flex-shrink:0">›</button>
+  </div>
+
+  <!-- ══ Level grid ══════════════════════════════════════════════════════════ -->
+  <div class="level-content">
+    <div id="level-grid" class="level-grid">
+      <div class="loading-msg">Chargement…</div>
+    </div>
+  </div>
+
+  <!-- ══ Footer ══════════════════════════════════════════════════════════════ -->
+  <footer class="index-footer">
+    <p class="footer-empty" id="footer-empty">Sélectionnez un niveau pour commencer</p>
+    <div class="footer-info hidden" id="footer-info">
+      <div class="footer-lvl-name" id="footer-name"></div>
+      <div class="footer-lvl-sub"  id="footer-sub"></div>
+    </div>
+    <button id="footer-play-btn" class="btn btn-primary hidden">Jouer ▶</button>
+  </footer>
+
+</div>
+
+<!-- ══ Launch panel ════════════════════════════════════════════════════════ -->
+<div id="launch-overlay" class="panel-overlay hidden">
+  <div class="launch-panel">
+    <h3 id="launch-title"></h3>
+    <p class="sub" id="launch-sub"></p>
+
+    <div class="launch-row">
+      <span class="launch-label">⏱ Chrono</span>
+      <div class="toggle-wrap">
+        <span id="chrono-label">Off</span>
+        <button id="chrono-toggle" class="toggle-btn" aria-pressed="false"></button>
+      </div>
+    </div>
+
+    <div class="mode-buttons">
+      <button class="mode-btn learn-btn" data-mode="learning">
+        <span class="mode-icon">📖</span><span>Apprentissage</span>
+      </button>
+      <button class="mode-btn" data-mode="clicword">
+        <span class="mode-icon">👆</span><span>Clic on word</span>
+      </button>
+      <button class="mode-btn" data-mode="typeword">
+        <span class="mode-icon">⌨</span><span>Type the word</span>
+      </button>
+      <button class="mode-btn" data-mode="parmi3">
+        <span class="mode-icon">🔤</span><span>Parmi 3</span>
+      </button>
+    </div>
+
+    <button id="launch-cancel-btn" class="btn btn-ghost btn-full" style="margin-top:16px">Annuler</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-service.js"></script>
+<script src="index.js"></script>
+</body>
+</html>

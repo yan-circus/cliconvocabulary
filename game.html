@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CliConVocabulary</title>
+  <link rel="stylesheet" href="game.css">
+</head>
+<body>
+<div class="game-layout">
+
+  <!-- ══ Header ══════════════════════════════════════════════════════════════ -->
+  <header class="game-header">
+    <div class="game-score">
+      <span id="score-val">0</span>
+      <span class="score-label">pts</span>
+    </div>
+    <div class="question-zone" id="question-zone">
+      <div class="question-hint">Chargement…</div>
+    </div>
+    <div class="game-lives" id="lives-zone"></div>
+  </header>
+
+  <!-- ══ Body ════════════════════════════════════════════════════════════════ -->
+  <div class="game-body" id="game-body">
+    <!-- chrono bar and learning list inserted by JS -->
+    <div class="game-image-area" id="game-image-area">
+      <img id="game-image" alt="" draggable="false">
+      <svg id="game-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+</div>
+
+<!-- Feedback toast -->
+<div id="feedback-toast" class="feedback-toast hidden"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-service.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
