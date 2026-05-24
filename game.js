@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.2.0';
+const VERSION = 'v0.2.1';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -44,6 +44,12 @@ async function init() {
     levelData = await gameService.getLevelById(LEVEL_ID);
     if (!levelData) { alert('Niveau introuvable.'); location.href = 'index.html'; return; }
     document.title = `${levelData.title || levelData.name} — CliConVocabulary`;
+    console.log('[level]', {
+      sel_color_override: levelData.sel_color_override,
+      selected_fill:      levelData.selected_fill,
+      selected_stroke:    levelData.selected_stroke,
+      marker_color:       levelData.marker_color,
+    });
 
     const raw = await gameService.getWords(LEVEL_ID);
     allWords = raw.filter(w => w.point);
