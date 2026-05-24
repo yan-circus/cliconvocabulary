@@ -16,39 +16,14 @@
       <span class="app-title">CliConVocabulary</span>
     </div>
     <div class="header-right">
-      <button id="settings-btn" class="icon-btn" title="Paramètres">⚙</button>
-      <button id="help-btn"     class="icon-btn" title="Aide">?</button>
-      <div class="auth-menu-wrap">
-        <button id="auth-menu-btn" class="icon-btn" title="Compte">👤</button>
-        <div id="auth-dropdown" class="auth-dropdown hidden">
-          <div id="auth-dd-info" class="auth-dd-info hidden"></div>
-
-          <!-- Not signed in -->
-          <div id="auth-signin-section">
-            <form id="dd-login-form">
-              <div class="form-group">
-                <label>Email</label>
-                <input id="dd-email" type="email" autocomplete="email" required>
-              </div>
-              <div class="form-group">
-                <label>Mot de passe</label>
-                <input id="dd-pw" type="password" autocomplete="current-password" required>
-              </div>
-              <button id="dd-login-btn" type="submit" class="btn btn-primary btn-full">Connexion</button>
-            </form>
-            <div class="divider">ou</div>
-            <button id="dd-google-btn" class="btn btn-google btn-full">Continuer avec Google</button>
-            <div id="dd-error" class="error-msg"></div>
-          </div>
-
-          <!-- Signed in -->
-          <div id="auth-connected-section" class="hidden">
-            <div id="auth-editor-link" class="hidden" style="margin-bottom:8px">
-              <a href="editor.html" class="btn btn-secondary btn-full">🖊 Éditeur de niveaux</a>
-            </div>
-            <button id="dd-logout-btn" class="btn btn-ghost btn-full">Déconnexion</button>
-          </div>
-        </div>
+      <button id="help-btn" class="icon-btn" title="Aide">?</button>
+      <div id="user-area">
+        <button id="auth-btn" title="Mon compte">
+          <img id="auth-avatar" class="user-avatar hidden" src="" alt="Avatar">
+          <span id="auth-icon">👤</span>
+          <span id="user-display">Me connecter</span>
+        </button>
+        <div id="user-dropdown" class="hidden"></div>
       </div>
     </div>
   </header>
@@ -142,6 +117,137 @@
     </div>
 
     <button id="launch-cancel-btn" class="btn btn-ghost btn-full" style="margin-top:16px">Annuler</button>
+  </div>
+</div>
+
+<!-- ══ Auth modal ══════════════════════════════════════════════════════════════ -->
+<div id="auth-overlay" class="panel-overlay hidden">
+  <div class="center-panel center-panel-sm">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Mon compte</h3>
+        <button id="auth-close" class="icon-btn">✕</button>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Connexion</button>
+        <button class="auth-tab" data-tab="register">Créer un compte</button>
+      </div>
+      <!-- Login -->
+      <form id="auth-login" class="auth-form">
+        <div class="form-group">
+          <label>Email</label>
+          <input id="login-email" type="email" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input id="login-password" type="password" autocomplete="current-password" required>
+        </div>
+        <button id="forgot-btn" type="button" class="auth-forgot">Mot de passe oublié ?</button>
+        <button id="login-btn" type="submit" class="btn btn-primary btn-full">Connexion</button>
+        <div id="login-error" class="error-msg"></div>
+      </form>
+      <!-- Register -->
+      <form id="auth-register" class="auth-form hidden">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input id="reg-firstname" type="text" autocomplete="given-name" required>
+        </div>
+        <div class="form-group">
+          <label>Nom (optionnel)</label>
+          <input id="reg-lastname" type="text" autocomplete="family-name">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input id="reg-email" type="email" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input id="reg-password" type="password" autocomplete="new-password" required minlength="6">
+        </div>
+        <p class="avatar-label">Avatar</p>
+        <div id="reg-avatar-picker" class="avatar-picker"></div>
+        <button id="register-btn" type="submit" class="btn btn-primary btn-full">Créer le compte</button>
+        <div id="register-error" class="error-msg"></div>
+      </form>
+      <div class="divider">ou</div>
+      <button id="google-btn" class="btn btn-google btn-full">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2a10.34 10.34 0 00-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.94v2.34A9 9 0 009 18z" fill="#34A853"/><path d="M3.98 10.72A5.4 5.4 0 013.7 9a5.4 5.4 0 01.28-1.72V4.94H.94A9 9 0 000 9c0 1.45.35 2.82.94 4.06l3.04-2.34z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.34l2.58-2.58C13.46.89 11.42 0 9 0A9 9 0 00.94 4.94l3.04 2.34C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Continuer avec Google
+      </button>
+      <button id="play-anon" type="button" class="auth-anon btn-full">Jouer sans compte</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Supervisor modal ═════════════════════════════════════════════════════════ -->
+<div id="supervisor-overlay" class="panel-overlay hidden">
+  <div class="center-panel center-panel-xs">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Options superviseur</h3>
+        <button id="supervisor-close" class="icon-btn">✕</button>
+      </div>
+      <div id="supervisor-auth">
+        <p class="supervisor-hint">Entrez votre mot de passe pour confirmer votre identité.</p>
+        <form id="supervisor-reauth-form" class="auth-form">
+          <div class="form-group">
+            <label>Mot de passe</label>
+            <input id="supervisor-password" type="password" autocomplete="current-password">
+          </div>
+          <button id="supervisor-reauth-btn" type="submit" class="btn btn-primary btn-full">Confirmer</button>
+          <button id="supervisor-google-btn" type="button" class="btn btn-google btn-full" style="display:none">
+            <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2a10.34 10.34 0 00-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.94v2.34A9 9 0 009 18z" fill="#34A853"/><path d="M3.98 10.72A5.4 5.4 0 013.7 9a5.4 5.4 0 01.28-1.72V4.94H.94A9 9 0 000 9c0 1.45.35 2.82.94 4.06l3.04-2.34z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.34l2.58-2.58C13.46.89 11.42 0 9 0A9 9 0 00.94 4.94l3.04 2.34C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/></svg>
+            Confirmer avec Google
+          </button>
+          <div id="supervisor-auth-error" class="error-msg"></div>
+        </form>
+      </div>
+      <div id="supervisor-options" style="display:none; flex-direction:column; gap:8px">
+        <button id="add-profile-btn" class="supervisor-option">➕ Ajouter un joueur</button>
+        <a href="editor.html" class="supervisor-option">🖊 Éditeur de niveaux</a>
+        <button id="logout-btn" class="supervisor-option supervisor-option-danger">⬅ Se déconnecter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Add profile modal ══════════════════════════════════════════════════════ -->
+<div id="add-profile-overlay" class="panel-overlay hidden">
+  <div class="center-panel center-panel-sm">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>Nouveau joueur</h3>
+        <button id="add-profile-close" class="icon-btn">✕</button>
+      </div>
+      <form id="add-profile-form" class="auth-form">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input id="add-profile-prenom" type="text" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label>Nom (optionnel)</label>
+          <input id="add-profile-nom" type="text" autocomplete="off">
+        </div>
+        <p class="avatar-label">Avatar</p>
+        <div id="add-profile-avatar-picker" class="avatar-picker"></div>
+        <button id="add-profile-submit" type="submit" class="btn btn-primary btn-full">Créer le joueur</button>
+        <div id="add-profile-error" class="error-msg"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Profile settings modal ════════════════════════════════════════════════ -->
+<div id="profile-overlay" class="panel-overlay hidden">
+  <div class="center-panel center-panel-sm">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="profile-panel-title">Avatar</h3>
+        <button id="profile-close" class="icon-btn">✕</button>
+      </div>
+      <div id="profile-avatar-picker" class="avatar-picker avatar-picker-4col"></div>
+      <button id="profile-save" class="btn btn-primary btn-full" style="margin-top:8px">Enregistrer</button>
+    </div>
   </div>
 </div>
 
