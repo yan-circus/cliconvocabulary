@@ -476,6 +476,7 @@ function renderLevelGrid() {
         ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
         : `<div class="level-card-img-ph">🖼</div>`}
       <div class="level-card-name">${esc(lvl.title || lvl.name)}</div>
+      <div class="level-stars">★★★</div>
     `;
     card.addEventListener('click', () => onLevelClick(lvl));
     grid.appendChild(card);
