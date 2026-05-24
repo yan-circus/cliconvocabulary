@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.2.2';
+const VERSION = 'v0.2.3';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -244,11 +244,12 @@ function renderMarkers(highlightIdx = activeIdx, wrongIdx = -1) {
     ptC.setAttribute('stroke-width', sWidth);
     ptG.appendChild(ptC);
 
+    ptG.classList.add('marker-pt');
     if (isActive && !isWrong) ptG.classList.add('marker-active-pulse');
     if (isWrong)              ptG.classList.add('marker-wrong-pulse');
 
     if (MODE === 'clicword' || MODE === 'learning') {
-      ptG.style.cursor = 'pointer';
+      ptG.classList.add('marker-clickable');
       ptG.addEventListener('click', e => { e.stopPropagation(); onMarkerClick(i); });
     }
 

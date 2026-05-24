@@ -325,6 +325,21 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .end-screen .end-score { font-size: 20px; color: var(--text-muted); }
 .end-screen .end-stars { font-size: 32px; letter-spacing: 4px; color: var(--warning); }
 
+/* Marker hover / click effects */
+.marker-pt {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform .12s ease-out;
+}
+.marker-pt.marker-clickable:not(.marker-active-pulse):hover {
+  transform: scale(1.35);
+  cursor: pointer;
+}
+.marker-pt.marker-clickable:not(.marker-active-pulse):active {
+  transform: scale(0.82);
+  transition: transform .06s ease-out;
+}
+
 /* Marker animations */
 @keyframes marker-pulse {
   0%, 100% { transform: scale(1); }
