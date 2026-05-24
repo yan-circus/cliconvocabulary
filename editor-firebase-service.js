@@ -130,6 +130,7 @@ window.editorService = {
       marker_opacity:      80,
       selected_fill:       '#ffffff',
       selected_stroke:     '#6c5ce7',
+      sel_color_override:  false,
       marker_color:        '#000000',
       marker_stroke_color: '#ffffff',
       marker_stroke_width: 2,

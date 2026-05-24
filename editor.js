@@ -262,9 +262,9 @@ async function openEditor(lvl) {
   document.getElementById('marker-opacity-value').textContent             = `${lvl.marker_opacity ?? 100} %`;
   document.getElementById('editor-selected-fill').value                   = lvl.selected_fill        || '#ffffff';
   document.getElementById('editor-selected-stroke').value                 = lvl.selected_stroke      || '#6c5ce7';
-  state.selColorOverride = false;
-  document.querySelector('.image-controls').classList.remove('sel-color-active');
-  document.getElementById('sel-color-btn').classList.remove('active');
+  state.selColorOverride = !!lvl.sel_color_override;
+  document.querySelector('.image-controls').classList.toggle('sel-color-active', state.selColorOverride);
+  document.getElementById('sel-color-btn').classList.toggle('active', state.selColorOverride);
   document.getElementById('editor-marker-color').value                    = lvl.marker_color        || '#000000';
   document.getElementById('editor-marker-stroke-color').value             = lvl.marker_stroke_color || '#ffffff';
   document.getElementById('editor-marker-stroke-width').value             = lvl.marker_stroke_width || 2;
@@ -693,8 +693,9 @@ async function saveLevel() {
       marker_size:     parseInt(document.getElementById('editor-marker-size').value)       || 16,
       arrow_size:      parseInt(document.getElementById('editor-arrow-size').value)        || 10,
       marker_opacity:  parseInt(document.getElementById('editor-marker-opacity').value)    ?? 100,
-      selected_fill:   document.getElementById('editor-selected-fill').value               || '#ffffff',
-      selected_stroke: document.getElementById('editor-selected-stroke').value             || '#6c5ce7',
+      selected_fill:      document.getElementById('editor-selected-fill').value            || '#ffffff',
+      selected_stroke:    document.getElementById('editor-selected-stroke').value          || '#6c5ce7',
+      sel_color_override: state.selColorOverride,
       marker_color:        document.getElementById('editor-marker-color').value                 || '#000000',
       marker_stroke_color: document.getElementById('editor-marker-stroke-color').value          || '#ffffff',
       marker_stroke_width: parseInt(document.getElementById('editor-marker-stroke-width').value)|| 2,
@@ -961,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.selColorOverride = !state.selColorOverride;
     document.querySelector('.image-controls').classList.toggle('sel-color-active', state.selColorOverride);
     document.getElementById('sel-color-btn').classList.toggle('active', state.selColorOverride);
-    renderMarkers();
+    markDirty(); renderMarkers();
   });
   ['editor-marker-color','editor-marker-stroke-color','editor-selected-fill','editor-selected-stroke','editor-line-style','editor-arrow-head']
     .forEach(id => document.getElementById(id).addEventListener('input', onAnyControlChange));
