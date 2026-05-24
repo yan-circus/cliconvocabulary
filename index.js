@@ -21,8 +21,7 @@ window.onGameAuthChanged = async (user) => {
     ddInfo.classList.remove('hidden');
     ddSignin.classList.add('hidden');
     ddConnected.classList.remove('hidden');
-    const sup = await gameService.isSupervisor().catch(() => false);
-    ddEditor.classList.toggle('hidden', !sup);
+    ddEditor.classList.remove('hidden');
   } else {
     ddInfo.classList.add('hidden');
     ddSignin.classList.remove('hidden');
