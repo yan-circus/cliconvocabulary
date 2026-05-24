@@ -78,9 +78,9 @@ function setupChronoBar() {
 
 function loadImage() {
   const img = document.getElementById('game-image');
-  img.addEventListener('load', renderMarkers);
+  img.addEventListener('load', () => renderMarkers());
   img.src = levelData.image_path || '';
-  window.addEventListener('resize', renderMarkers);
+  window.addEventListener('resize', () => renderMarkers());
 }
 
 document.addEventListener('keydown', e => {
@@ -169,8 +169,14 @@ function renderMarkers(highlightIdx = activeIdx, wrongIdx = -1) {
     if (!w.point) return;
     const isActive = i === highlightIdx;
     const isWrong  = i === wrongIdx;
-    const pFill    = isActive ? lightenColor(color)  : color;
-    const pStroke  = isActive ? lightenColor(sColor) : sColor;
+    const selFill   = levelData.sel_color_override
+      ? (levelData.selected_fill   || '#ffffff')
+      : lightenColor(color);
+    const selStroke = levelData.sel_color_override
+      ? (levelData.selected_stroke || '#6c5ce7')
+      : lightenColor(sColor);
+    const pFill    = isActive ? selFill   : color;
+    const pStroke  = isActive ? selStroke : sColor;
 
     const { px, py } = toSvg(w.point, r);
     const wG = mkSvg('g');
