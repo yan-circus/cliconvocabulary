@@ -79,9 +79,42 @@
 
 </div>
 
+<!-- ══ Help panel ══════════════════════════════════════════════════════════ -->
+<div id="help-overlay" class="panel-overlay hidden">
+  <div class="center-panel help-panel">
+    <div class="center-panel-header">
+      <h3>Aide — CliConVocabulary</h3>
+      <button id="help-close-btn" class="icon-btn">✕</button>
+    </div>
+    <div class="help-body">
+      <div class="help-section">
+        <div class="help-mode-title">📖 Apprentissage</div>
+        <p>Explorez le vocabulaire librement. Cliquez sur un mot dans la liste pour voir son point sur l'image, ou cliquez sur un point pour retrouver le mot.</p>
+      </div>
+      <div class="help-section">
+        <div class="help-mode-title">👆 Clic on word</div>
+        <p>Un mot s'affiche. Cliquez sur le bon point dans l'image. En cas d'erreur, la bonne réponse se met en évidence et la question est reposée.</p>
+      </div>
+      <div class="help-section">
+        <div class="help-mode-title">⌨ Type the word</div>
+        <p>Un point est mis en évidence dans l'image. Tapez le mot anglais correspondant et validez avec Entrée ou le bouton OK.</p>
+      </div>
+      <div class="help-section">
+        <div class="help-mode-title">🔤 Parmi 3</div>
+        <p>Un point est mis en évidence. Choisissez le bon mot parmi 3 propositions.</p>
+      </div>
+      <div class="help-section">
+        <div class="help-mode-title">⏱ Chrono</div>
+        <p>Activez le chrono pour gagner plus de points (jusqu'à 1 000 par bonne réponse rapide). Sans chrono : 100 points fixes. Vous disposez de 3 vies par partie.</p>
+      </div>
+    </div>
+    <div class="help-version" id="help-version"></div>
+  </div>
+</div>
+
 <!-- ══ Launch panel ════════════════════════════════════════════════════════ -->
 <div id="launch-overlay" class="panel-overlay hidden">
-  <div class="launch-panel">
+  <div class="center-panel launch-panel">
     <h3 id="launch-title"></h3>
     <p class="sub" id="launch-sub"></p>
 

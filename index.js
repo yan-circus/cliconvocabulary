@@ -1,5 +1,7 @@
 // index.js — CliConVocabulary level browser
 
+const VERSION = 'v0.1.0';
+
 const state = {
   families:       [],
   selectedFamily: null,
@@ -210,6 +212,21 @@ document.getElementById('tabs-next').addEventListener('click', () => {
 
 document.getElementById('close-btn').addEventListener('click', () => {
   if (window.history.length > 1) window.history.back(); else window.close();
+});
+
+// ── Help panel ────────────────────────────────────────────────────────────────
+
+document.getElementById('help-version').textContent = `CliConVocabulary ${VERSION}`;
+
+document.getElementById('help-btn').addEventListener('click', () => {
+  document.getElementById('help-overlay').classList.remove('hidden');
+});
+document.getElementById('help-close-btn').addEventListener('click', () => {
+  document.getElementById('help-overlay').classList.add('hidden');
+});
+document.getElementById('help-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('help-overlay'))
+    document.getElementById('help-overlay').classList.add('hidden');
 });
 
 function esc(str) {

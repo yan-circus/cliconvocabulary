@@ -148,17 +148,39 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .footer-lvl-name { font-size: 16px; font-weight: 700; }
 .footer-lvl-sub  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
-/* Launch panel */
+/* Centered overlay (help, launch panel) */
 .panel-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.45);
-  display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+  padding: 16px;
 }
-.launch-panel {
-  background: var(--surface); border-radius: 24px 24px 0 0;
-  padding: 24px 20px 36px; width: 100%; max-width: 460px;
+.center-panel {
+  background: var(--surface); border-radius: 20px;
+  width: 100%; max-width: 460px; max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25);
 }
+.center-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 0;
+}
+.center-panel-header h3 { font-size: 18px; font-weight: 800; }
+
+/* Launch panel */
+.launch-panel { padding: 18px 20px 24px; }
 .launch-panel h3   { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
 .launch-panel .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+
+/* Help panel */
+.help-panel  { }
+.help-body   { padding: 12px 20px; overflow-y: auto; flex: 1; }
+.help-section { margin-bottom: 16px; }
+.help-mode-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.help-section p  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.help-version    {
+  padding: 12px 20px; font-size: 11px; color: var(--text-muted);
+  border-top: 1px solid var(--border); text-align: right; flex-shrink: 0;
+}
 
 .launch-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .launch-label { font-size: 14px; font-weight: 600; }
