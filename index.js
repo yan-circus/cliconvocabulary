@@ -1,6 +1,8 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION = 'v0.2.3';
+const VERSION     = 'v0.2.4';
+const COMMIT_HASH = '—';
+const COMMIT_DATE = '—';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const state = {
@@ -217,7 +219,10 @@ document.getElementById('close-btn').addEventListener('click', () => {
 
 // ── Help panel ────────────────────────────────────────────────────────────────
 
-document.getElementById('help-version').textContent = `CliConVocabulary ${VERSION}`;
+document.getElementById('help-version').textContent =
+  `CliConVocabulary ${VERSION}` +
+  (COMMIT_HASH !== '—' ? `  ${COMMIT_HASH}` : '') +
+  (COMMIT_DATE !== '—' ? `  ${COMMIT_DATE}` : '');
 
 document.getElementById('help-btn').addEventListener('click', () => {
   document.getElementById('help-overlay').classList.remove('hidden');
