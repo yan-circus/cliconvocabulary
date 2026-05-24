@@ -1,8 +1,8 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION     = 'v0.2.7';
-const COMMIT_HASH = 'a259538';
-const COMMIT_DATE = '2026-05-24 13:59 +0200';
+const VERSION     = 'v0.2.8';
+const COMMIT_HASH = '3d0b67f';
+const COMMIT_DATE = '2026-05-24 14:09 +0200';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const state = {
