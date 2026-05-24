@@ -1,6 +1,7 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION = 'v0.1.0';
+const VERSION = 'v0.2.0';
+console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const state = {
   families:       [],
