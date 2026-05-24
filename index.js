@@ -221,8 +221,8 @@ document.getElementById('close-btn').addEventListener('click', () => {
 
 document.getElementById('help-version').textContent =
   `CliConVocabulary ${VERSION}` +
-  (COMMIT_HASH !== '—' ? `  ${COMMIT_HASH}` : '') +
-  (COMMIT_DATE !== '—' ? `  ${COMMIT_DATE}` : '');
+  (COMMIT_DATE !== '—' ? `  comit: ${COMMIT_DATE}` : '') +
+  (COMMIT_HASH !== '—' ? `  num:${COMMIT_HASH}` : '');
 
 document.getElementById('help-btn').addEventListener('click', () => {
   document.getElementById('help-overlay').classList.remove('hidden');
