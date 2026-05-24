@@ -40,7 +40,7 @@ window.gameService = {
 
   isSupervisor: async () => {
     const acc = await gameService.getUserAccount().catch(() => null);
-    return !!(acc?.role === 'supervisor' || acc?.role === 'admin');
+    return !!(acc?.role === 'parent');
   },
 
   getFamilies: async () => {

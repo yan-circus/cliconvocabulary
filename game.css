@@ -301,6 +301,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .end-screen .end-emoji { font-size: 64px; }
 .end-screen .end-title { font-size: 28px; font-weight: 800; }
 .end-screen .end-score { font-size: 20px; color: var(--text-muted); }
+.end-screen .end-stars { font-size: 32px; letter-spacing: 4px; color: var(--warning); }
 
 /* Marker animations */
 @keyframes marker-pulse {
