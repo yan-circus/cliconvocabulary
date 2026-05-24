@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.2.1';
+const VERSION = 'v0.2.2';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -86,9 +86,14 @@ function setupChronoBar() {
 
 function loadImage() {
   const img = document.getElementById('game-image');
-  img.addEventListener('load', () => renderMarkers());
+  img.addEventListener('load', () => renderCurrent());
   img.src = levelData.image_path || '';
-  window.addEventListener('resize', () => renderMarkers());
+  window.addEventListener('resize', () => renderCurrent());
+}
+
+// In clicword mode the active point must not be revealed before the player answers
+function renderCurrent() {
+  renderMarkers(MODE === 'clicword' ? -1 : activeIdx);
 }
 
 document.addEventListener('keydown', e => {
@@ -306,7 +311,7 @@ function nextQuestion() {
   activeIdx         = playQueue[playPos++];
   questionStartTime = Date.now();
   locked            = false;
-  renderMarkers();
+  renderCurrent();
 
   if (MODE === 'clicword') setupClicWord();
   else if (MODE === 'typeword') setupTypeWord();
@@ -327,8 +332,13 @@ function setupClicWord() {
 function handleClicWordAnswer(clickedIdx) {
   if (locked) return;
   stopChrono();
-  if (clickedIdx === activeIdx) onCorrect();
-  else { onWrong(); renderMarkers(activeIdx, clickedIdx); }
+  if (clickedIdx === activeIdx) {
+    renderMarkers(activeIdx); // briefly reveal the correct point
+    onCorrect();
+  } else {
+    onWrong();
+    renderMarkers(activeIdx, clickedIdx);
+  }
 }
 
 // ── Type the word ─────────────────────────────────────────────────────────────
