@@ -378,7 +378,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .score-gold         { color: #f59e0b; }
 .score-empty        { color: var(--border); }
 .score-none         { color: var(--text-muted); }
-.score-pts          { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.score-pts          { font-size: 11px; color: var(--text-muted); }
 
 .launch-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .launch-label { font-size: 14px; font-weight: 600; }

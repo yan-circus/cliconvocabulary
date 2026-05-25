@@ -802,10 +802,10 @@ function _bestPoints(progress) {
 
 function _cellHtml(stars, points) {
   if (stars === undefined || stars === null) return '<span class="score-none">—</span>';
+  const p = points !== undefined ? `<span class="score-pts">${points} pts</span> ` : '';
   const s = '<span class="score-gold">' + '★'.repeat(stars) + '</span>'
           + '<span class="score-empty">☆</span>'.repeat(3 - stars);
-  const p = points !== undefined ? `<div class="score-pts">${points} pts</div>` : '';
-  return s + p;
+  return p + s;
 }
 
 async function openScorePanel() {
