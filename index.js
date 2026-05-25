@@ -738,9 +738,9 @@ function updateFooter() {
 
 const MODE_META = {
   learning: { icon: '📖', label: 'Apprentissage' },
-  clicword: { icon: '👆', label: 'Find the word' },
+  findword: { icon: '👆', label: 'Find the word' },
   typeword: { icon: '⌨',  label: 'Type the word' },
-  parmi3:   { icon: '🔤', label: 'Choose the word' },
+  chooseword:   { icon: '🔤', label: 'Choose the word' },
 };
 let selectedMode = 'learning';
 

@@ -6,16 +6,16 @@ const GAME_CONFIG = {
   // Numeric IDs stored in Firestore scores
   game_types: {
     learning: 0,
-    clicword: 1,
-    parmi3:   2,
+    findword: 1,
+    chooseword:   2,
     typeword: 3,
   },
 
   // Seconds allowed per question in chrono mode, by game type
   chrono_s: {
-    clicword: 8,
-    parmi3:   10,
-    typeword: 20,
+    findword:   5,
+    chooseword: 5,
+    typeword:   20,
   },
 
   // 3-star threshold: score must exceed (this value × nb_questions)

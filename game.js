@@ -6,7 +6,7 @@ console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-wei
 
 const params      = new URLSearchParams(location.search);
 const LEVEL_ID    = params.get('level');
-const MODE        = params.get('mode')    || 'clicword';
+const MODE        = params.get('mode')    || 'findword';
 const CHRONO      = params.get('chrono')  === '1';
 const AVATAR      = parseInt(params.get('avatar') || '1', 10);
 const PLAYER      = params.get('player')  || '';
@@ -106,9 +106,9 @@ function loadImage() {
   window.addEventListener('resize', () => renderCurrent());
 }
 
-// In clicword mode the active point must not be revealed before the player answers
+// In findword mode the active point must not be revealed before the player answers
 function renderCurrent() {
-  renderMarkers(MODE === 'clicword' ? -1 : activeIdx);
+  renderMarkers(MODE === 'findword' ? -1 : activeIdx);
 }
 
 document.addEventListener('keydown', e => {
@@ -277,7 +277,7 @@ function renderMarkers(highlightIdx = activeIdx, wrongIdx = -1) {
     if (isActive && !isWrong) ptG.classList.add('marker-active-pulse');
     if (isWrong)              ptG.classList.add('marker-wrong-pulse');
 
-    if (MODE === 'clicword' || MODE === 'learning') {
+    if (MODE === 'findword' || MODE === 'learning') {
       ptG.classList.add('marker-clickable');
       ptG.addEventListener('click', e => { e.stopPropagation(); onMarkerClick(i); });
     }
@@ -319,7 +319,7 @@ function renderLearningList(selIdx) {
 function onMarkerClick(idx) {
   if (MODE === 'learning') {
     activeIdx = idx; renderLearningList(idx); renderMarkers(idx);
-  } else if (MODE === 'clicword') {
+  } else if (MODE === 'findword') {
     handleClicWordAnswer(idx);
   }
 }
@@ -344,9 +344,9 @@ function nextQuestion() {
   locked            = false;
   renderCurrent();
 
-  if (MODE === 'clicword') setupClicWord();
+  if (MODE === 'findword') setupClicWord();
   else if (MODE === 'typeword') setupTypeWord();
-  else if (MODE === 'parmi3')  setupParmi3();
+  else if (MODE === 'chooseword')  setupParmi3();
 
   if (CHRONO) startChrono();
 }
