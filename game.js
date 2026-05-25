@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.2.9';
+const VERSION = 'v0.3.0';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -34,8 +34,8 @@ let answeredCorrectly = new Set();
 let questionStartTime = 0;
 let gameStartTime     = 0;
 let locked            = false; // blocks input during transitions
-let chronoVal         = TIME_LIMIT;
-let chronoTimer       = null;
+let chronoStart       = null;
+let chronoRaf         = null;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -235,14 +235,28 @@ function renderMarkers(highlightIdx = activeIdx, wrongIdx = -1) {
       wG.appendChild(tipC);
     });
 
-    // Point circle
+    // Point group — outer container (never transforms, so hit area stays fixed)
     const ptG = mkSvg('g');
+
+    // Fixed hit area: matches visual extent at max zoom (size/2 * 1.35)
+    const hitC = mkSvg('circle');
+    hitC.setAttribute('cx', px); hitC.setAttribute('cy', py);
+    hitC.setAttribute('r', size * 0.675);
+    hitC.setAttribute('fill', 'transparent');
+    hitC.setAttribute('stroke', 'none');
+    hitC.setAttribute('pointer-events', 'all');
+    ptG.appendChild(hitC);
+
+    // Inner visual group — this one scales on hover/active/animations
+    const ptInner = mkSvg('g');
+    ptInner.classList.add('marker-pt-inner');
     const ptC = mkSvg('circle');
     ptC.setAttribute('cx', px); ptC.setAttribute('cy', py);
     ptC.setAttribute('r', size / 2);
     ptC.setAttribute('fill', pFill); ptC.setAttribute('stroke', pStroke);
     ptC.setAttribute('stroke-width', sWidth);
-    ptG.appendChild(ptC);
+    ptInner.appendChild(ptC);
+    ptG.appendChild(ptInner);
 
     ptG.classList.add('marker-pt');
     if (isActive && !isWrong) ptG.classList.add('marker-active-pulse');
@@ -450,25 +464,25 @@ function onWrong() {
 
 function startChrono() {
   stopChrono();
-  chronoVal = TIME_LIMIT;
-  updateChronoBar();
-  chronoTimer = setInterval(() => {
-    chronoVal--;
-    updateChronoBar();
-    if (chronoVal <= 0) { stopChrono(); onChronoOut(); }
-  }, 1000);
+  chronoStart = performance.now();
+  function tick(now) {
+    const elapsed = (now - chronoStart) / 1000;
+    const pct = Math.max(0, 1 - elapsed / TIME_LIMIT);
+    updateChronoBar(pct);
+    if (pct <= 0) { stopChrono(); onChronoOut(); return; }
+    chronoRaf = requestAnimationFrame(tick);
+  }
+  chronoRaf = requestAnimationFrame(tick);
 }
 
 function stopChrono() {
-  if (chronoTimer) { clearInterval(chronoTimer); chronoTimer = null; }
+  if (chronoRaf) { cancelAnimationFrame(chronoRaf); chronoRaf = null; }
 }
 
-function updateChronoBar() {
+function updateChronoBar(pct) {
   const fill = document.getElementById('chrono-fill');
   if (!fill) return;
-  const pct = (chronoVal / TIME_LIMIT) * 100;
-  fill.style.height = pct + '%';
-  fill.className = 'chrono-fill' + (pct < 30 ? ' danger' : pct < 55 ? ' warning' : '');
+  fill.style.height = ((1 - pct) * 100) + '%';
 }
 
 function onChronoOut() {

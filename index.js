@@ -1,6 +1,6 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION     = 'v0.2.9';
+const VERSION     = 'v0.3.0';
 const COMMIT_HASH = '6dc9bb3';
 const COMMIT_DATE = '2026-05-25';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
@@ -437,16 +437,203 @@ async function init() {
   }
 }
 
+// ── Couleurs de famille ───────────────────────────────────────────────────────
+
+const FAMILY_COLORS = [
+  '#e74c3c', '#e67e22', '#f39c12', '#27ae60',
+  '#1abc9c', '#2980b9', '#9b59b6', '#e91e63',
+  '#00bcd4', '#ff5722', '#3f51b5', '#8bc34a',
+];
+
+function getFamilyColor(familyIdx) {
+  return FAMILY_COLORS[familyIdx % FAMILY_COLORS.length];
+}
+
+function _hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function updateFamilyColor() {
+  const idx = state.selectedFamily
+    ? state.families.findIndex(f => f.docId === state.selectedFamily.docId)
+    : -1;
+  const el = document.querySelector('.level-content');
+  if (!el) return;
+  el.style.background = idx >= 0 ? getFamilyColor(idx) : '';
+}
+
+// ── Carousel ──────────────────────────────────────────────────────────────────
+
+// Slots -3..+3 : ±3 hors-écran pour les items qui entrent pendant le glissement
+const _SLOT_PARAMS = [
+  { tx: -380, ty:  0, scale: 0.50, opacity: 0    }, // -3
+  { tx: -246, ty:  0, scale: 0.70, opacity: 0.50 }, // -2
+  { tx: -142, ty:  0, scale: 1.00, opacity: 0.80 }, // -1
+  { tx:    0, ty: 13, scale: 1.50, opacity: 1.00 }, //  0  (centre — descend pour toucher le content)
+  { tx:  142, ty:  0, scale: 1.00, opacity: 0.80 }, // +1
+  { tx:  246, ty:  0, scale: 0.70, opacity: 0.50 }, // +2
+  { tx:  380, ty:  0, scale: 0.50, opacity: 0    }, // +3
+];
+function _slotP(offset) { return _SLOT_PARAMS[Math.max(0, Math.min(6, offset + 3))]; }
+function _lerp(a, b, t) { return a + (b - a) * t; }
+
+let _suppressCarouselClick = false;
+let _carouselPending = null;
+let _carouselRaf     = null;
+
 function renderFamilyTabs() {
   const scroll = document.getElementById('family-tabs-scroll');
   scroll.innerHTML = '';
-  state.families.forEach(fam => {
+  const n = state.families.length;
+  if (n === 0) return;
+  const selIdx = state.families.findIndex(f => f.docId === state.selectedFamily?.docId);
+
+  for (let offset = -3; offset <= 3; offset++) {
+    const famIdx = selIdx + offset;
+    if (famIdx < 0 || famIdx >= n) continue;
+    const fam = state.families[famIdx];
+    const p   = _slotP(offset);
     const tab = document.createElement('button');
-    tab.className = `family-tab${fam.docId === state.selectedFamily?.docId ? ' active' : ''}`;
-    tab.textContent = fam.name;
-    tab.addEventListener('click', () => selectFamily(fam));
+    tab.className      = 'family-tab' + (offset === 0 ? ' active' : '');
+    tab.textContent    = fam.name;
+    tab.dataset.offset = offset;
+    tab.style.background = getFamilyColor(famIdx);
+    tab.style.opacity    = p.opacity;
+    tab.style.transform  = `translateX(${p.tx}px) translateY(${p.ty}px) scale(${p.scale})`;
+    tab.addEventListener('click', () => {
+      if (_suppressCarouselClick || offset === 0) return;
+      _carouselNavigate(Math.sign(offset), Math.abs(offset));
+    });
     scroll.appendChild(tab);
+  }
+}
+
+// p quelconque : positif = glisse vers droite (famille précédente), négatif = vers gauche (suivante)
+function _carouselSetProgress(p) {
+  const scroll = document.getElementById('family-tabs-scroll');
+  if (!scroll) return;
+  const abs = Math.abs(p);
+  const dir = p >= 0 ? 1 : -1;
+  const n   = Math.floor(abs);       // slots déjà franchis
+  const t   = abs - n;               // fraction vers le slot suivant
+  scroll.querySelectorAll('.family-tab').forEach(tab => {
+    const k    = parseInt(tab.dataset.offset);
+    const from = _slotP(k + n * dir);
+    const to   = _slotP(k + (n + 1) * dir);
+    tab.style.transform = `translateX(${_lerp(from.tx, to.tx, t)}px) translateY(${_lerp(from.ty, to.ty, t)}px) scale(${_lerp(from.scale, to.scale, t)})`;
+    tab.style.opacity   = _lerp(from.opacity, to.opacity, t);
   });
+}
+
+// Animation rAF pour les clics (part de p=0, arrive à p=targetP en douceur)
+function _carouselNavigate(navDir, steps = 1) {
+  const selIdx  = state.families.findIndex(f => f.docId === state.selectedFamily?.docId);
+  const maxStep = navDir < 0 ? selIdx : state.families.length - 1 - selIdx;
+  const actual  = Math.min(steps, maxStep);
+  if (actual <= 0) return;
+
+  const newFam  = state.families[selIdx + navDir * actual];
+  const targetP = navDir < 0 ? actual : -actual;
+
+  state.selectedFamily         = newFam;
+  state.selectedLevel          = null;
+  state.selectedLevelWordCount = null;
+  updateFooter();
+  updateFamilyColor();
+  document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Chargement…</div>';
+  gameService.getLevels(newFam.id).then(levels => { state.levels = levels; renderLevelGrid(); });
+
+  const scroll = document.getElementById('family-tabs-scroll');
+  scroll.querySelectorAll('.family-tab').forEach(t => { t.style.transition = 'none'; });
+  _suppressCarouselClick = true;
+  if (_carouselPending) { clearTimeout(_carouselPending); _carouselPending = null; }
+  if (_carouselRaf)     { cancelAnimationFrame(_carouselRaf); _carouselRaf = null; }
+
+  const duration  = actual * 300;
+  const startTime = performance.now();
+
+  function tick(now) {
+    const raw   = Math.min(1, (now - startTime) / duration);
+    const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+    _carouselSetProgress(targetP * eased);
+    if (raw < 1) {
+      _carouselRaf = requestAnimationFrame(tick);
+    } else {
+      _carouselRaf = null;
+      _suppressCarouselClick = false;
+      renderFamilyTabs();
+    }
+  }
+  _carouselRaf = requestAnimationFrame(tick);
+}
+
+function initCarouselDrag() {
+  const scroll = document.getElementById('family-tabs-scroll');
+  const MAX_PX = 130;
+  let startX   = null;
+
+  const setTr = (on) =>
+    scroll.querySelectorAll('.family-tab').forEach(t => { t.style.transition = on ? '' : 'none'; });
+
+  const onStart = (clientX) => {
+    const hadAnimation = _carouselPending || _carouselRaf;
+    if (_carouselPending) { clearTimeout(_carouselPending); _carouselPending = null; }
+    if (_carouselRaf)     { cancelAnimationFrame(_carouselRaf); _carouselRaf = null; }
+    if (hadAnimation) renderFamilyTabs();
+    startX = clientX;
+    setTr(false);
+  };
+
+  const onMove = (clientX) => {
+    if (startX === null) return;
+    _carouselSetProgress(Math.max(-2, Math.min(2, (clientX - startX) / MAX_PX)));
+  };
+
+  const onEnd = (clientX) => {
+    if (startX === null) return;
+    const p    = Math.max(-2, Math.min(2, (clientX - startX) / MAX_PX));
+    startX     = null;
+    const absP = Math.abs(p);
+    const dir  = p > 0 ? -1 : 1;
+    const steps = absP >= 0.25 ? Math.min(2, Math.round(absP)) : 0;
+    const selIdx = state.families.findIndex(f => f.docId === state.selectedFamily?.docId);
+    const newIdx = selIdx + dir * steps;
+    const canNav = steps > 0 && newIdx >= 0 && newIdx < state.families.length;
+
+    setTr(true);
+
+    if (canNav) {
+      const targetP = dir < 0 ? steps : -steps;
+      _carouselSetProgress(targetP); // CSS transition prend le relais depuis la position actuelle
+      _suppressCarouselClick = true;
+      const newFam = state.families[newIdx];
+      state.selectedFamily         = newFam;
+      state.selectedLevel          = null;
+      state.selectedLevelWordCount = null;
+      updateFooter();
+      updateFamilyColor();
+      document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Chargement…</div>';
+      gameService.getLevels(newFam.id).then(levels => { state.levels = levels; renderLevelGrid(); });
+      if (_carouselPending) clearTimeout(_carouselPending);
+      _carouselPending = setTimeout(() => {
+        _suppressCarouselClick = false;
+        _carouselPending = null;
+        renderFamilyTabs();
+      }, 390);
+    } else {
+      _carouselSetProgress(0);
+    }
+  };
+
+  scroll.addEventListener('mousedown',  e => onStart(e.clientX));
+  document.addEventListener('mousemove', e => { if (startX !== null) onMove(e.clientX); });
+  document.addEventListener('mouseup',   e => { if (startX !== null) onEnd(e.clientX); });
+  scroll.addEventListener('touchstart', e => onStart(e.touches[0].clientX), { passive: true });
+  scroll.addEventListener('touchmove',  e => { if (startX !== null) onMove(e.touches[0].clientX); }, { passive: true });
+  scroll.addEventListener('touchend',   e => { if (startX !== null) onEnd(e.changedTouches[0].clientX); });
 }
 
 async function selectFamily(fam) {
@@ -455,6 +642,7 @@ async function selectFamily(fam) {
   state.selectedLevelWordCount  = null;
   renderFamilyTabs();
   updateFooter();
+  updateFamilyColor();
   document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Chargement…</div>';
   state.levels = await gameService.getLevels(fam.id);
   renderLevelGrid();
@@ -564,14 +752,7 @@ function launchGame(mode) {
   window.location.href = `game.html?${p}`;
 }
 
-// ── Tab scroll arrows ─────────────────────────────────────────────────────────
-
-document.getElementById('tabs-prev').addEventListener('click', () => {
-  document.getElementById('family-tabs-scroll').scrollBy({ left: -160, behavior: 'smooth' });
-});
-document.getElementById('tabs-next').addEventListener('click', () => {
-  document.getElementById('family-tabs-scroll').scrollBy({ left: 160, behavior: 'smooth' });
-});
+initCarouselDrag();
 
 // ── Misc ──────────────────────────────────────────────────────────────────────
 
