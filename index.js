@@ -13,7 +13,7 @@ const state = {
   selectedLevelWordCount: null,
   progress:              { best_scores: {} },
 };
-let chronoEnabled = false;
+let chronoEnabled = localStorage.getItem('cv-chrono') === '1';
 
 // ── Auth & Profiles ───────────────────────────────────────────────────────────
 
@@ -440,7 +440,9 @@ async function init() {
   state.families = await gameService.getFamilies();
   renderFamilyTabs();
   if (state.families.length > 0) {
-    await selectFamily(state.families[0]);
+    const savedFamId = localStorage.getItem('cv-family-id');
+    const fam = state.families.find(f => String(f.docId) === savedFamId) || state.families[0];
+    await selectFamily(fam);
   } else {
     document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Aucune famille disponible.</div>';
   }
@@ -649,6 +651,7 @@ async function selectFamily(fam) {
   state.selectedFamily          = fam;
   state.selectedLevel           = null;
   state.selectedLevelWordCount  = null;
+  localStorage.setItem('cv-family-id', String(fam.docId));
   renderFamilyTabs();
   updateFooter();
   updateFamilyColor();
@@ -742,7 +745,7 @@ const MODE_META = {
   typeword: { icon: '⌨',  label: 'Type the word' },
   chooseword:   { icon: '🔤', label: 'Choose the word' },
 };
-let selectedMode = 'learning';
+let selectedMode = localStorage.getItem('cv-mode') || 'learning';
 
 function updateModeBtn() {
   const m = MODE_META[selectedMode];
@@ -761,6 +764,7 @@ document.getElementById('mode-menu-btn').addEventListener('click', e => {
 document.querySelectorAll('.mode-entry').forEach(btn => {
   btn.addEventListener('click', () => {
     selectedMode = btn.dataset.mode;
+    localStorage.setItem('cv-mode', selectedMode);
     updateModeBtn();
     document.getElementById('mode-dropdown').classList.add('hidden');
     if (state.selectedFamily) renderLevelGrid();
@@ -774,10 +778,12 @@ document.addEventListener('click', e => {
 
 document.getElementById('chrono-toggle').addEventListener('click', () => {
   chronoEnabled = !chronoEnabled;
+  localStorage.setItem('cv-chrono', chronoEnabled ? '1' : '0');
   document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
 });
 
 updateModeBtn();
+document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
 
 // ── Launch ────────────────────────────────────────────────────────────────────
 
