@@ -312,7 +312,7 @@ body {
 /* ── Modal ───────────────────────────────────────────────────────────── */
 
 .modal-overlay {
-  display: none;
+  display: flex;
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.65);
@@ -320,6 +320,7 @@ body {
   justify-content: center;
   z-index: 200;
 }
+.modal-overlay.hidden { display: none; }
 
 .modal {
   background: var(--surface);
