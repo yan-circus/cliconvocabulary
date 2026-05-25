@@ -878,11 +878,16 @@ async function _renderRanking(container) {
     <th>Joueur</th><th>Niveau</th>${SCORE_MODES.map(m => `<th>${m.label}</th>`).join('')}
   </tr></thead><tbody>`;
 
-  profiles.forEach(profile => {
-    const bs = progressMap[profile.id]?.best_scores || {};
+  const bpMap = {};
+  await Promise.all(profiles.map(async p => {
+    bpMap[p.id] = await _ensureBestPoints(p.id, progressMap[p.id] || {});
+  }));
+
+  for (const profile of profiles) {
+    const bs     = progressMap[profile.id]?.best_scores || {};
+    const bp     = bpMap[profile.id] || {};
     const played = levels.filter(lvl => SCORE_MODES.some(m => bs[`${lvl.docId}_${m.typeId}`] !== undefined));
-    if (!played.length) return;
-    const bp = await _ensureBestPoints(profile.id, progressMap[profile.id] || {});
+    if (!played.length) continue;
     played.forEach((lvl, i) => {
       html += '<tr>';
       if (i === 0) html += `<td class="score-player-name" rowspan="${played.length}">${esc(profile.prenom)}</td>`;
@@ -893,7 +898,7 @@ async function _renderRanking(container) {
       });
       html += '</tr>';
     });
-  });
+  }
   html += '</tbody></table>';
   container.innerHTML = html;
 }
