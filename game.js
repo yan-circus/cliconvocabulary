@@ -557,8 +557,8 @@ function showEnd(victory) {
   const overlay = document.createElement('div');
   overlay.className = 'end-screen';
   overlay.innerHTML = `
-    <div class="end-emoji">${victory ? '🎉' : '💔'}</div>
-    <div class="end-title">${victory ? 'Niveau terminé !' : 'Perdu…'}</div>
+    ${victory ? '<div class="end-emoji">🎉</div>' : ''}
+    <div class="end-title">${victory ? 'Niveau terminé !' : 'GAME OVER'}</div>
     <div class="end-score">${score} point${score !== 1 ? 's' : ''}</div>
     ${victory ? `<div class="end-stars">${starsStr}</div>` : ''}
     <div style="display:flex;gap:10px;margin-top:8px">
