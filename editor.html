@@ -148,9 +148,9 @@
       <div class="word-panel-header">
         <h3>Vocabulaire</h3>
         <span id="word-count" class="word-count"></span>
-        <button id="import-btn" class="btn btn-secondary btn-sm" title="Importer depuis CSV">↓ Import CSV</button>
-        <button id="clear-markers-btn" class="btn btn-danger btn-sm" title="Supprimer tous les marqueurs">✕ Marqueurs</button>
         <button id="add-word-btn" class="btn btn-primary btn-sm">＋ Ajouter</button>
+        <button id="import-btn" class="btn btn-secondary btn-sm" title="Importer depuis CSV">↓ CSV</button>
+        <button id="clear-markers-btn" class="btn btn-danger btn-sm" title="Supprimer tous les marqueurs">✕ Pts</button>
       </div>
       <div id="import-area" class="import-area">
         <p class="import-hint">Collez un CSV séparé par <code>;</code> (ligne 1 = en-tête) :</p>
@@ -197,6 +197,19 @@
     <button id="meta-markers-btn" class="btn btn-primary meta-markers-btn">
       🖊 Affectation des marqueurs →
     </button>
+  </div>
+</div>
+
+<!-- ══ Validation modal ═══════════════════════════════════════════════════════ -->
+<div id="validation-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>⚠ Niveau non valide</h2>
+    <p id="validation-msg" style="margin-bottom:8px"></p>
+    <p style="font-size:13px;color:var(--text-muted)">Tous les mots doivent avoir un marqueur pour que le niveau soit visible dans le jeu.</p>
+    <div class="modal-actions" style="margin-top:16px">
+      <button id="validation-fix-btn" class="btn btn-primary">Corriger</button>
+      <button id="validation-save-anyway-btn" class="btn btn-secondary">Sauvegarder quand même</button>
+    </div>
   </div>
 </div>
 

@@ -120,8 +120,11 @@ function renderLevelGrid() {
     const diff = editorService.DIFFICULTIES.find(d => d.id === lvl.difficulty);
     const card = document.createElement('div');
     card.className = 'level-card';
+    const validBadge = lvl.valid === false
+      ? '<span class="level-invalid-badge">✗ invalide</span>'
+      : (lvl.valid === true ? '<span class="level-valid-badge">✓</span>' : '');
     card.innerHTML = `
-      <div class="level-card-title">${esc(lvl.title || lvl.name)}</div>
+      <div class="level-card-title">${esc(lvl.title || lvl.name)} ${validBadge}</div>
       <div class="level-card-diff">${diff ? diff.label : '—'}</div>
       <div class="level-card-actions">
         <button class="btn btn-sm btn-primary">Éditer</button>
@@ -402,7 +405,11 @@ function buildWordItem(w, i) {
     markDirty(); renderWordList(); renderMarkers();
   });
 
-  // Inputs
+  // Inputs — stopPropagation pour éviter que le clic remonte au handler word-item et déclenche un re-render
+  ['.wi-fr', '.wi-en'].forEach(sel => {
+    item.querySelector(sel).addEventListener('click',     e => e.stopPropagation());
+    item.querySelector(sel).addEventListener('mousedown', e => e.stopPropagation());
+  });
   item.querySelector('.wi-fr').addEventListener('input', e => { state.words[i].fr = e.target.value; markDirty(); });
   item.querySelector('.wi-en').addEventListener('input', e => { state.words[i].en = e.target.value; markDirty(); });
 
@@ -712,6 +719,22 @@ function onAnyControlChange() { markDirty(); renderMarkers(); }
 // ── Save ──────────────────────────────────────────────────────────────────────
 
 async function saveLevel() {
+  const missing = state.words.filter(w => !w.point).length;
+  const valid   = state.words.length > 0 && missing === 0;
+
+  if (!valid) {
+    const msg = state.words.length === 0
+      ? 'Le niveau ne contient aucun mot.'
+      : `${missing} mot${missing > 1 ? 's' : ''} sans marqueur.`;
+    document.getElementById('validation-msg').textContent = msg;
+    document.getElementById('validation-modal').classList.remove('hidden');
+    return;
+  }
+  await doSaveLevel(true);
+}
+
+async function doSaveLevel(valid) {
+  document.getElementById('validation-modal').classList.add('hidden');
   const btn = document.getElementById('save-btn');
   setLoading(btn, true);
   try {
@@ -727,11 +750,13 @@ async function saveLevel() {
       marker_stroke_width: parseInt(document.getElementById('editor-marker-stroke-width').value)|| 2,
       line_style:          document.getElementById('editor-line-style').value                   || 'solid',
       arrow_head:          document.getElementById('editor-arrow-head').value                   || 'filled',
+      valid,
     });
     await editorService.saveWords(state.level.docId, state.words);
+    state.level.valid = valid;
     state.isDirty = false;
-    btn.textContent = '✓ Sauvegardé';
-    setTimeout(() => { btn.textContent = 'Sauvegarder'; }, 2000);
+    btn.textContent = valid ? '✓ Sauvegardé' : '⚠ Sauvegardé (invalide)';
+    setTimeout(() => { btn.textContent = 'Sauvegarder'; }, 2500);
   } catch (err) { alert('Erreur lors de la sauvegarde : ' + err.message); }
   finally       { btn.disabled = false; }
 }
@@ -949,6 +974,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear-markers-btn').addEventListener('click', clearAllMarkers);
   document.getElementById('import-cancel-btn').addEventListener('click', toggleImportArea);
   document.getElementById('import-confirm-btn').addEventListener('click', handleImport);
+  document.getElementById('validation-fix-btn').addEventListener('click', () =>
+    document.getElementById('validation-modal').classList.add('hidden')
+  );
+  document.getElementById('validation-save-anyway-btn').addEventListener('click', () => doSaveLevel(false));
   document.getElementById('replace-image-btn').addEventListener('click', () =>
     document.getElementById('replace-image-input').click()
   );

@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.3.1';
+const VERSION = 'v0.3.2';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -8,6 +8,15 @@ const params   = new URLSearchParams(location.search);
 const LEVEL_ID = params.get('level');
 const MODE     = params.get('mode')   || 'clicword';
 const CHRONO   = params.get('chrono') === '1';
+const AVATAR   = parseInt(params.get('avatar') || '1', 10);
+const PLAYER   = params.get('player') || '';
+
+(function() {
+  const avatar = document.getElementById('game-avatar');
+  if (avatar) avatar.src = `assets/avatars/avatar${String(AVATAR).padStart(2, '0')}.png`;
+  const name = document.getElementById('game-player-name');
+  if (name) name.textContent = PLAYER;
+})();
 
 if (!LEVEL_ID) location.href = 'index.html';
 
@@ -63,8 +72,12 @@ async function init() {
     setupChronoBar();
     loadImage();
 
-    if (MODE === 'learning') setupLearning();
-    else                     setupPlay();
+    if (MODE === 'learning') {
+      document.querySelector('.game-score').style.visibility = 'hidden';
+      setupLearning();
+    } else {
+      setupPlay();
+    }
 
   } catch(err) {
     alert('Erreur : ' + err.message);

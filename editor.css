@@ -284,6 +284,8 @@ body {
   font-size: 11px;
   color: var(--text-muted);
 }
+.level-valid-badge   { color: #16a34a; font-size: 11px; font-weight: 700; }
+.level-invalid-badge { color: #dc2626; font-size: 11px; font-weight: 700; }
 .level-card-words {
   font-size: 11px;
   color: var(--text-muted);
@@ -530,11 +532,12 @@ body {
 }
 
 .word-panel-header {
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px;
   flex-shrink: 0;
 }
 

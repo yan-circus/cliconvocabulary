@@ -1,6 +1,6 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION     = 'v0.3.1';
+const VERSION     = 'v0.3.2';
 const COMMIT_HASH = '6dc9bb3';
 const COMMIT_DATE = '2026-05-25';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
@@ -659,7 +659,7 @@ function renderLevelGrid() {
     grid.innerHTML = '<div class="loading-msg">Aucun niveau dans cette famille.</div>';
     return;
   }
-  state.levels.forEach(lvl => {
+  state.levels.filter(lvl => lvl.valid !== false).forEach(lvl => {
     const card = document.createElement('div');
     const isSelected = state.selectedLevel?.docId === lvl.docId;
     card.className = `level-card${isSelected ? ' selected' : ''}`;
@@ -675,7 +675,7 @@ function renderLevelGrid() {
     if (isSelected) {
       card.querySelector('.level-card-play').addEventListener('click', e => {
         e.stopPropagation();
-        openLaunchPanel();
+        launchGame(selectedMode);
       });
     }
     grid.appendChild(card);
@@ -684,7 +684,7 @@ function renderLevelGrid() {
 
 function onLevelClick(lvl) {
   if (state.selectedLevel?.docId === lvl.docId) {
-    openLaunchPanel();
+    launchGame(selectedMode);
   } else {
     state.selectedLevel          = lvl;
     state.selectedLevelWordCount = null;
@@ -719,34 +719,51 @@ function updateFooter() {
   document.getElementById('footer-sub').textContent = parts.join('  ·  ');
 }
 
-// ── Launch panel ──────────────────────────────────────────────────────────────
+// ── Mode menu ─────────────────────────────────────────────────────────────────
 
-function openLaunchPanel() {
-  if (!state.selectedLevel) return;
-  const lvl = state.selectedLevel;
-  document.getElementById('launch-title').textContent = lvl.title || lvl.name;
-  document.getElementById('launch-sub').textContent   = state.selectedFamily?.name || '';
-  document.getElementById('launch-overlay').classList.remove('hidden');
+const MODE_META = {
+  learning: { icon: '📖', label: 'Apprentissage' },
+  clicword: { icon: '👆', label: 'Find the word' },
+  typeword: { icon: '⌨',  label: 'Type the word' },
+  parmi3:   { icon: '🔤', label: 'Choose the word' },
+};
+let selectedMode = 'learning';
+
+function updateModeBtn() {
+  const m = MODE_META[selectedMode];
+  document.getElementById('mode-menu-icon').textContent  = m.icon;
+  document.getElementById('mode-menu-label').textContent = m.label;
+  document.querySelectorAll('.mode-entry').forEach(el =>
+    el.classList.toggle('active', el.dataset.mode === selectedMode)
+  );
 }
 
-function closeLaunchPanel() {
-  document.getElementById('launch-overlay').classList.add('hidden');
-}
+document.getElementById('mode-menu-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('mode-dropdown').classList.toggle('hidden');
+});
 
-document.getElementById('launch-cancel-btn').addEventListener('click', closeLaunchPanel);
-document.getElementById('launch-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('launch-overlay')) closeLaunchPanel();
+document.querySelectorAll('.mode-entry').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedMode = btn.dataset.mode;
+    updateModeBtn();
+    document.getElementById('mode-dropdown').classList.add('hidden');
+  });
+});
+
+document.addEventListener('click', e => {
+  if (!document.getElementById('mode-menu').contains(e.target))
+    document.getElementById('mode-dropdown').classList.add('hidden');
 });
 
 document.getElementById('chrono-toggle').addEventListener('click', () => {
   chronoEnabled = !chronoEnabled;
   document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
-  document.getElementById('chrono-label').textContent = chronoEnabled ? 'On' : 'Off';
 });
 
-document.querySelectorAll('[data-mode]').forEach(btn => {
-  btn.addEventListener('click', () => launchGame(btn.dataset.mode));
-});
+updateModeBtn();
+
+// ── Launch ────────────────────────────────────────────────────────────────────
 
 function launchGame(mode) {
   if (!state.selectedLevel) return;
@@ -754,6 +771,8 @@ function launchGame(mode) {
     level:  state.selectedLevel.docId,
     mode,
     chrono: chronoEnabled ? '1' : '0',
+    avatar: profileAvatarId,
+    player: currentProfileData?.prenom || '',
   });
   window.location.href = `game.html?${p}`;
 }

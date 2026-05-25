@@ -68,7 +68,46 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 }
 .header-left  { display: flex; align-items: center; gap: 8px; }
 .header-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.app-title { font-size: 16px; font-weight: 900; color: #fff; margin-left: 4px; letter-spacing: .5px; }
+
+/* Mode dropdown */
+.mode-menu { position: relative; }
+.mode-menu-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.18); border: none; border-radius: 20px;
+  color: #fff; font-size: 13px; font-weight: 700; padding: 0 12px;
+  height: 32px; cursor: pointer; transition: background .15s;
+}
+.mode-menu-btn:hover { background: rgba(255,255,255,.28); }
+.mode-menu-arrow { font-size: 10px; opacity: .7; }
+.mode-dropdown {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 6px; min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 200;
+}
+.mode-entry {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 12px; border: none; background: none; border-radius: 10px;
+  font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; text-align: left;
+}
+.mode-entry:hover { background: var(--surface2); }
+.mode-entry.active { background: var(--primary-light); color: var(--primary); }
+
+/* Chrono header button */
+.chrono-header-btn {
+  position: relative; overflow: hidden;
+  background: rgba(255,255,255,.18); border: none; border-radius: 20px;
+  color: rgba(255,255,255,.55); font-size: 16px; padding: 0 10px;
+  height: 32px; cursor: pointer; transition: all .15s;
+}
+.chrono-header-btn:hover { background: rgba(255,255,255,.28); }
+.chrono-header-btn.on { background: rgba(255,255,255,.35); color: #fff; }
+.chrono-header-btn:not(.on)::after {
+  content: ''; position: absolute;
+  top: 50%; left: 10%; width: 80%; height: 2px;
+  background: rgba(255,255,255,.7);
+  transform: translateY(-50%) rotate(-35deg);
+}
 
 /* Header icon buttons — blancs sur fond magenta */
 .index-layout .icon-btn {
@@ -358,7 +397,10 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   font-size: 18px; font-weight: 800; color: var(--primary);
 }
 .game-score .score-label { font-size: 11px; font-weight: 600; color: var(--text-muted); }
-.game-lives { display: flex; align-items: center; gap: 2px; min-width: 80px; justify-content: flex-end; }
+.game-lives { display: flex; align-items: center; gap: 2px; justify-content: flex-end; }
+.game-player { display: flex; align-items: center; gap: 6px; margin-left: 8px; }
+.game-avatar  { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+#game-player-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
 .life      { font-size: 20px; line-height: 1; }
 .life.lost { filter: grayscale(1); opacity: .25; }
 

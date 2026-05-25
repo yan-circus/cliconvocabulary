@@ -12,8 +12,20 @@
   <!-- ══ Header ══════════════════════════════════════════════════════════════ -->
   <header class="index-header">
     <div class="header-left">
-      <button id="close-btn" class="icon-btn" title="Fermer">✕</button>
-      <span class="app-title">CliConVocabulary</span>
+      <div id="mode-menu" class="mode-menu">
+        <button id="mode-menu-btn" class="mode-menu-btn">
+          <span id="mode-menu-icon">📖</span>
+          <span id="mode-menu-label">Apprentissage</span>
+          <span class="mode-menu-arrow">▾</span>
+        </button>
+        <div id="mode-dropdown" class="mode-dropdown hidden">
+          <button class="mode-entry" data-mode="learning"><span>📖</span>Apprentissage</button>
+          <button class="mode-entry" data-mode="clicword"><span>👆</span>Find the word</button>
+          <button class="mode-entry" data-mode="parmi3"><span>🔤</span>Choose the word</button>
+          <button class="mode-entry" data-mode="typeword"><span>⌨</span>Type the word</button>
+        </div>
+      </div>
+      <button id="chrono-toggle" class="chrono-header-btn" title="Chrono">⏱</button>
     </div>
     <div class="header-right">
       <button id="help-btn" class="icon-btn" title="Aide">?</button>
@@ -25,6 +37,7 @@
         </button>
         <div id="user-dropdown" class="hidden"></div>
       </div>
+      <button id="close-btn" class="icon-btn" title="Fermer">✕</button>
     </div>
   </header>
 
@@ -81,39 +94,6 @@
       </div>
     </div>
     <div class="help-version" id="help-version"></div>
-  </div>
-</div>
-
-<!-- ══ Launch panel ════════════════════════════════════════════════════════ -->
-<div id="launch-overlay" class="panel-overlay hidden">
-  <div class="center-panel launch-panel">
-    <h3 id="launch-title"></h3>
-    <p class="sub" id="launch-sub"></p>
-
-    <div class="launch-row">
-      <span class="launch-label">⏱ Chrono</span>
-      <div class="toggle-wrap">
-        <span id="chrono-label">Off</span>
-        <button id="chrono-toggle" class="toggle-btn" aria-pressed="false"></button>
-      </div>
-    </div>
-
-    <div class="mode-buttons">
-      <button class="mode-btn learn-btn" data-mode="learning">
-        <span class="mode-icon">📖</span><span>Apprentissage</span>
-      </button>
-      <button class="mode-btn" data-mode="clicword">
-        <span class="mode-icon">👆</span><span>Find the word</span>
-      </button>
-      <button class="mode-btn" data-mode="typeword">
-        <span class="mode-icon">⌨</span><span>Type the word</span>
-      </button>
-      <button class="mode-btn" data-mode="parmi3">
-        <span class="mode-icon">🔤</span><span>Choose the word</span>
-      </button>
-    </div>
-
-    <button id="launch-cancel-btn" class="btn btn-ghost btn-full" style="margin-top:16px">Annuler</button>
   </div>
 </div>
 
