@@ -699,6 +699,51 @@ body {
   flex-shrink: 0;
 }
 
+/* ── Level meta screen ───────────────────────────────────────────────── */
+
+.meta-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow-y: auto;
+  gap: 20px;
+}
+
+.meta-form {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 28px 32px;
+  border: 1px solid var(--border);
+}
+
+.meta-form .form-group textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  transition: border-color .15s;
+}
+.meta-form .form-group textarea:focus { border-color: var(--primary); }
+
+.meta-markers-btn {
+  width: 100%;
+  max-width: 520px;
+  padding: 16px;
+  font-size: 15px;
+}
+
 /* ── Scrollbar ───────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 5px; }

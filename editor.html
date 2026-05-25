@@ -213,6 +213,39 @@
   </div>
 </div>
 
+<!-- ══ Level Meta screen ══════════════════════════════════════════════════════ -->
+<div class="screen" data-screen="level-meta">
+  <header class="editor-header">
+    <button id="meta-back-btn" class="btn btn-secondary">← Retour</button>
+    <h2 id="meta-title"></h2>
+    <button id="meta-save-btn" class="btn btn-success">Sauvegarder</button>
+  </header>
+  <div class="meta-body">
+    <div class="meta-form">
+      <div class="form-group">
+        <label>Nom du niveau</label>
+        <input id="meta-name" type="text" required>
+      </div>
+      <div class="form-group">
+        <label>Famille</label>
+        <select id="meta-family"></select>
+      </div>
+      <div class="form-group">
+        <label>Difficulté</label>
+        <select id="meta-diff"></select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="meta-notes" rows="5" placeholder="Description, contexte, remarques…"></textarea>
+      </div>
+      <div id="meta-error" class="error-msg"></div>
+    </div>
+    <button id="meta-markers-btn" class="btn btn-primary meta-markers-btn">
+      🖊 Affectation des marqueurs →
+    </button>
+  </div>
+</div>
+
 <!-- ══ New level modal ════════════════════════════════════════════════════════ -->
 <div id="new-level-modal" class="modal-overlay">
   <div class="modal">
@@ -225,6 +258,10 @@
       <div class="form-group">
         <label>Difficulté</label>
         <select id="new-level-diff"></select>
+      </div>
+      <div class="form-group">
+        <label>Notes (optionnel)</label>
+        <textarea id="new-level-notes" rows="3" placeholder="Description, contexte…"></textarea>
       </div>
       <div class="form-group">
         <label>Image (JPG / PNG / WEBP)</label>

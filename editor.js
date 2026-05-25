@@ -171,7 +171,7 @@ function renderLevelGrid() {
         <button class="btn btn-sm btn-danger">✕</button>
       </div>
     `;
-    card.querySelectorAll('.btn')[0].addEventListener('click', () => openEditor(lvl));
+    card.querySelectorAll('.btn')[0].addEventListener('click', () => openMeta(lvl));
     card.querySelectorAll('.btn')[1].addEventListener('click', () => confirmDeleteLevel(lvl));
     grid.appendChild(card);
   });
@@ -203,6 +203,7 @@ function openNewLevelModal() {
   if (!state.selectedFamily) { alert('Sélectionnez d\'abord une famille.'); return; }
   document.getElementById('new-level-name').value  = '';
   document.getElementById('new-level-diff').value  = '1';
+  document.getElementById('new-level-notes').value = '';
   document.getElementById('new-level-image').value = '';
   const preview = document.getElementById('new-level-preview');
   if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
@@ -223,27 +224,95 @@ function handleImagePreview(e) {
 
 async function handleCreateLevel(e) {
   e.preventDefault();
-  const name = document.getElementById('new-level-name').value.trim();
-  const diff = parseInt(document.getElementById('new-level-diff').value);
-  const file = document.getElementById('new-level-image').files[0];
+  const name  = document.getElementById('new-level-name').value.trim();
+  const diff  = parseInt(document.getElementById('new-level-diff').value);
+  const notes = document.getElementById('new-level-notes').value.trim();
+  const file  = document.getElementById('new-level-image').files[0];
   if (!name) { showErr('modal-error', 'Le nom est obligatoire.'); return; }
   if (!file) { showErr('modal-error', 'L\'image est obligatoire.'); return; }
   const btn = document.getElementById('create-level-btn');
   setLoading(btn, true);
   try {
-    const lvl = await editorService.createLevel(state.selectedFamily.id, state.selectedFamily.uuid, name, diff);
+    const lvl = await editorService.createLevel(state.selectedFamily.id, state.selectedFamily.uuid, name, diff, notes);
     await editorService.uploadImage(lvl.docId, file);
     hideModal('new-level-modal');
     state.levels = await editorService.getLevels(state.selectedFamily.id);
     const full = state.levels.find(l => l.docId === lvl.docId);
-    if (full) openEditor(full); else renderLevelGrid();
+    if (full) openEditorScreen(full); else renderLevelGrid();
   } catch (err) { showErr('modal-error', err.message); }
   finally       { setLoading(btn, false); }
 }
 
+// ── Level Meta ────────────────────────────────────────────────────────────────
+
+function openMeta(lvl) {
+  state.level = lvl;
+
+  document.getElementById('meta-title').textContent = `${state.selectedFamily?.name || ''} / ${lvl.title || lvl.name}`;
+  document.getElementById('meta-name').value  = lvl.title || lvl.name || '';
+  document.getElementById('meta-notes').value = lvl.notes || '';
+  showErr('meta-error', '');
+
+  const famSel = document.getElementById('meta-family');
+  famSel.innerHTML = '';
+  state.families.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.docId;
+    opt.textContent = f.name;
+    if (f.docId === (state.selectedFamily?.docId || '')) opt.selected = true;
+    famSel.appendChild(opt);
+  });
+
+  const diffSel = document.getElementById('meta-diff');
+  diffSel.innerHTML = '';
+  editorService.DIFFICULTIES.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.label;
+    if (d.id === lvl.difficulty) opt.selected = true;
+    diffSel.appendChild(opt);
+  });
+
+  showScreen('level-meta');
+}
+
+async function handleSaveMeta() {
+  const btn   = document.getElementById('meta-save-btn');
+  const name  = document.getElementById('meta-name').value.trim();
+  if (!name) { showErr('meta-error', 'Le nom est obligatoire.'); return; }
+  const famDocId = document.getElementById('meta-family').value;
+  const diff     = parseInt(document.getElementById('meta-diff').value);
+  const notes    = document.getElementById('meta-notes').value;
+  const newFam   = state.families.find(f => f.docId === famDocId);
+
+  setLoading(btn, true);
+  try {
+    const updates = { name, title: name, difficulty: diff, notes };
+    if (newFam && Number(newFam.id) !== Number(state.level.family_id)) {
+      updates.family_id   = Number(newFam.id);
+      updates.family_uuid = newFam.uuid;
+    }
+    await editorService.updateLevelMeta(state.level.docId, updates);
+    Object.assign(state.level, updates);
+    if (newFam) state.selectedFamily = newFam;
+    document.getElementById('meta-title').textContent = `${state.selectedFamily?.name || ''} / ${name}`;
+    btn.textContent = '✓ Sauvegardé';
+    setTimeout(() => { btn.textContent = 'Sauvegarder'; }, 2000);
+  } catch (err) { showErr('meta-error', err.message); }
+  finally       { btn.disabled = false; }
+}
+
+async function backFromMetaToBrowser() {
+  showScreen('browser');
+  if (state.selectedFamily) {
+    state.levels = await editorService.getLevels(state.selectedFamily.id);
+    renderLevelGrid();
+  }
+}
+
 // ── Editor ────────────────────────────────────────────────────────────────────
 
-async function openEditor(lvl) {
+async function openEditorScreen(lvl) {
   state.level         = lvl;
   state.words         = [];
   state.selectedWord  = -1;
@@ -712,15 +781,11 @@ async function saveLevel() {
 
 // ── Back ──────────────────────────────────────────────────────────────────────
 
-async function backToBrowser() {
+async function backToMeta() {
   if (state.isDirty && !confirm('Des modifications non sauvegardées seront perdues. Continuer ?')) return;
   state.isDirty = false; state.selectedWord = -1; state.editMode = null; state.selectedArrow = -1;
   document.getElementById('image-area').classList.remove('can-place-point', 'can-place-arrow');
-  showScreen('browser');
-  if (state.selectedFamily) {
-    state.levels = await editorService.getLevels(state.selectedFamily.id);
-    renderLevelGrid();
-  }
+  openMeta(state.level);
 }
 
 // ── Import CSV ────────────────────────────────────────────────────────────────
@@ -922,8 +987,13 @@ document.addEventListener('DOMContentLoaded', () => {
     opt.value = d.id; opt.textContent = d.label; diffSel.appendChild(opt);
   });
 
+  // Level meta
+  document.getElementById('meta-back-btn').addEventListener('click', backFromMetaToBrowser);
+  document.getElementById('meta-save-btn').addEventListener('click', handleSaveMeta);
+  document.getElementById('meta-markers-btn').addEventListener('click', () => openEditorScreen(state.level));
+
   // Editor
-  document.getElementById('back-btn').addEventListener('click', backToBrowser);
+  document.getElementById('back-btn').addEventListener('click', backToMeta);
   document.getElementById('save-btn').addEventListener('click', saveLevel);
   document.getElementById('add-word-btn').addEventListener('click', addWord);
   document.getElementById('import-btn').addEventListener('click', toggleImportArea);

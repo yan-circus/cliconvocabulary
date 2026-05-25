@@ -110,7 +110,7 @@ window.editorService = {
       .sort((a, b) => a.id - b.id);
   },
 
-  createLevel: async (familyId, familyUuid, name, difficulty) => {
+  createLevel: async (familyId, familyUuid, name, difficulty, notes = '') => {
     const snap   = await db.collection('levels').orderBy('id', 'desc').limit(1).get();
     const lastId = snap.empty ? 100 : Math.max(100, snap.docs[0].data().id ?? 100);
     const newId  = lastId + 1;
@@ -124,6 +124,7 @@ window.editorService = {
       name,
       title:               name,
       difficulty,
+      notes:               notes || '',
       image_path:          '',
       marker_size:         16,
       arrow_size:          10,

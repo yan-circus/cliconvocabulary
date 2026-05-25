@@ -6,10 +6,11 @@ const COMMIT_DATE = '2026-05-24 14:09 +0200';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const state = {
-  families:       [],
-  selectedFamily: null,
-  levels:         [],
-  selectedLevel:  null,
+  families:              [],
+  selectedFamily:        null,
+  levels:                [],
+  selectedLevel:         null,
+  selectedLevelWordCount: null,
 };
 let chronoEnabled = false;
 
@@ -449,8 +450,9 @@ function renderFamilyTabs() {
 }
 
 async function selectFamily(fam) {
-  state.selectedFamily = fam;
-  state.selectedLevel  = null;
+  state.selectedFamily          = fam;
+  state.selectedLevel           = null;
+  state.selectedLevelWordCount  = null;
   renderFamilyTabs();
   updateFooter();
   document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Chargement…</div>';
@@ -467,11 +469,10 @@ function renderLevelGrid() {
     grid.innerHTML = '<div class="loading-msg">Aucun niveau dans cette famille.</div>';
     return;
   }
-  state.levels.forEach((lvl, idx) => {
+  state.levels.forEach(lvl => {
     const card = document.createElement('div');
     card.className = `level-card${state.selectedLevel?.docId === lvl.docId ? ' selected' : ''}`;
     card.innerHTML = `
-      <div class="level-num">${idx + 1}</div>
       ${lvl.image_path
         ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
         : `<div class="level-card-img-ph">🖼</div>`}
@@ -487,9 +488,16 @@ function onLevelClick(lvl) {
   if (state.selectedLevel?.docId === lvl.docId) {
     openLaunchPanel();
   } else {
-    state.selectedLevel = lvl;
+    state.selectedLevel          = lvl;
+    state.selectedLevelWordCount = null;
     renderLevelGrid();
     updateFooter();
+    gameService.getWordCount(lvl.docId).then(count => {
+      if (state.selectedLevel?.docId === lvl.docId) {
+        state.selectedLevelWordCount = count;
+        updateFooter();
+      }
+    }).catch(() => {});
   }
 }
 
@@ -508,7 +516,12 @@ function updateFooter() {
   info.classList.remove('hidden');
   playBtn.classList.remove('hidden');
   document.getElementById('footer-name').textContent = state.selectedLevel.title || state.selectedLevel.name;
-  document.getElementById('footer-sub').textContent  = state.selectedFamily?.name || '';
+
+  const parts = [];
+  if (state.selectedLevel.notes) parts.push(state.selectedLevel.notes);
+  if (state.selectedLevelWordCount !== null)
+    parts.push(`${state.selectedLevelWordCount} mot${state.selectedLevelWordCount !== 1 ? 's' : ''}`);
+  document.getElementById('footer-sub').textContent = parts.join('  ·  ');
 }
 
 // ── Launch panel ──────────────────────────────────────────────────────────────

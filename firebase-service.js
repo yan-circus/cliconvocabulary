@@ -133,6 +133,11 @@ window.gameService = {
     });
   },
 
+  getWordCount: async (levelDocId) => {
+    const snap = await db.collection('levels').doc(String(levelDocId)).collection('words').get();
+    return snap.size;
+  },
+
   getLevelById: async (levelDocId) => {
     const doc = await db.collection('levels').doc(String(levelDocId)).get();
     return doc.exists ? { docId: doc.id, ...doc.data() } : null;
