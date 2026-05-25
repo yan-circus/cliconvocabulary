@@ -796,9 +796,12 @@ const SCORE_MODES = [
 let _scorePanelTab = 'mine';
 let _allLevels     = null;
 
-function _starsHtml(n) {
-  if (n === undefined || n === null) return '<span class="score-none">—</span>';
-  return '<span class="score-gold">' + '★'.repeat(n) + '</span>' + '<span class="score-empty">☆</span>'.repeat(3 - n);
+function _cellHtml(stars, points) {
+  if (stars === undefined || stars === null) return '<span class="score-none">—</span>';
+  const s = '<span class="score-gold">' + '★'.repeat(stars) + '</span>'
+          + '<span class="score-empty">☆</span>'.repeat(3 - stars);
+  const p = points !== undefined ? `<div class="score-pts">${points} pts</div>` : '';
+  return s + p;
 }
 
 async function openScorePanel() {
@@ -833,10 +836,12 @@ async function _renderMyScores(container) {
   let html = `<table class="score-table"><thead><tr>
     <th>Niveau</th>${SCORE_MODES.map(m => `<th>${m.label}</th>`).join('')}
   </tr></thead><tbody>`;
+  const bp = progress.best_points || {};
   levels.forEach(lvl => {
     html += `<tr><td class="score-level-name">${esc(lvl.title || lvl.name)}</td>`;
     SCORE_MODES.forEach(m => {
-      html += `<td class="score-stars">${_starsHtml(bs[`${lvl.docId}_${m.typeId}`])}</td>`;
+      const key = `${lvl.docId}_${m.typeId}`;
+      html += `<td class="score-stars">${_cellHtml(bs[key], bp[key])}</td>`;
     });
     html += '</tr>';
   });
@@ -864,12 +869,14 @@ async function _renderRanking(container) {
     const bs = progressMap[profile.id]?.best_scores || {};
     const played = levels.filter(lvl => SCORE_MODES.some(m => bs[`${lvl.docId}_${m.typeId}`] !== undefined));
     if (!played.length) return;
+    const bp = progressMap[profile.id]?.best_points || {};
     played.forEach((lvl, i) => {
       html += '<tr>';
       if (i === 0) html += `<td class="score-player-name" rowspan="${played.length}">${esc(profile.prenom)}</td>`;
       html += `<td class="score-level-name">${esc(lvl.title || lvl.name)}</td>`;
       SCORE_MODES.forEach(m => {
-        html += `<td class="score-stars">${_starsHtml(bs[`${lvl.docId}_${m.typeId}`])}</td>`;
+        const key = `${lvl.docId}_${m.typeId}`;
+        html += `<td class="score-stars">${_cellHtml(bs[key], bp[key])}</td>`;
       });
       html += '</tr>';
     });

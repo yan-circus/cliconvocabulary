@@ -550,7 +550,7 @@ function showEnd(victory) {
       stars,
     }).catch(console.error);
     if (victory) {
-      gameService.updateProgress(PROFILE_ID, LEVEL_ID, gameTypeId, stars).catch(console.error);
+      gameService.updateProgress(PROFILE_ID, LEVEL_ID, gameTypeId, stars, score).catch(console.error);
     }
   }
 
