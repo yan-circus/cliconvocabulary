@@ -1,15 +1,16 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.3.2';
+const VERSION = 'v0.3.3';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
 
-const params   = new URLSearchParams(location.search);
-const LEVEL_ID = params.get('level');
-const MODE     = params.get('mode')   || 'clicword';
-const CHRONO   = params.get('chrono') === '1';
-const AVATAR   = parseInt(params.get('avatar') || '1', 10);
-const PLAYER   = params.get('player') || '';
+const params      = new URLSearchParams(location.search);
+const LEVEL_ID    = params.get('level');
+const MODE        = params.get('mode')    || 'clicword';
+const CHRONO      = params.get('chrono')  === '1';
+const AVATAR      = parseInt(params.get('avatar') || '1', 10);
+const PLAYER      = params.get('player')  || '';
+const PROFILE_ID  = params.get('profile') || '';
 
 (function() {
   const avatar = document.getElementById('game-avatar');
@@ -23,7 +24,7 @@ if (!LEVEL_ID) location.href = 'index.html';
 // ── Constants (spec: principe_scores4cliconvocabulary.md) ─────────────────────
 
 const MAX_LIVES            = 3;
-const TIME_LIMIT           = 5;      // seconds per question (chrono mode)
+const TIME_LIMIT           = GAME_CONFIG.chrono_s[MODE] ?? 8; // seconds per question (chrono mode)
 const SCORE_MIN            = 100;    // points for slowest correct answer
 const SCORE_MAX            = 1000;   // points for instant correct answer
 const FEEDBACK_DELAY_OK    = 700;    // ms before next question after correct
@@ -36,6 +37,7 @@ let levelData         = null;
 let allWords          = [];    // words that have a point
 let score             = 0;
 let lives             = MAX_LIVES;
+let wrongCount        = 0;
 let activeIdx         = -1;
 let playQueue         = [];    // ordered list of word indices to ask
 let playPos           = 0;     // next index to consume from playQueue
@@ -328,6 +330,7 @@ function setupPlay() {
   playQueue         = shuffle(allWords.map((_, i) => i));
   playPos           = 0;
   answeredCorrectly = new Set();
+  wrongCount        = 0;
   gameStartTime     = Date.now();
   nextQuestion();
 }
@@ -465,6 +468,7 @@ function onCorrect() {
 
 function onWrong() {
   locked = true;
+  wrongCount++;
   const dead = loseLife();
   showFeedback('Incorrect !', false);
   // Re-inject 2 positions later in the queue
@@ -522,10 +526,33 @@ function showEnd(victory) {
   stopChrono();
   document.getElementById('feedback-toast').className = 'feedback-toast hidden';
 
-  const poolSize = allWords.length;
-  const ratio    = score / (poolSize * SCORE_MAX);
-  const stars    = !victory ? 0 : ratio >= 0.70 ? 3 : ratio >= 0.40 ? 2 : 1;
-  const starsStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  const livesLost = MAX_LIVES - lives;
+  const nbQ       = allWords.length;
+  let stars = 0;
+  if (victory) {
+    if (livesLost === 0 && CHRONO && score > GAME_CONFIG.score3_per_question * nbQ) stars = 3;
+    else if (livesLost === 0) stars = 2;
+    else stars = 1;
+  }
+  const starsStr = MODE === 'learning' ? '' : '★'.repeat(stars) + '☆'.repeat(3 - stars);
+
+  if (PROFILE_ID && MODE !== 'learning') {
+    const gameTypeId = GAME_CONFIG.game_types[MODE] || 1;
+    const duration_s = Math.round((Date.now() - gameStartTime) / 1000);
+    gameService.saveScore(PROFILE_ID, {
+      game_id:      GAME_CONFIG.game_id,
+      game_type_id: gameTypeId,
+      level_id:     LEVEL_ID,
+      score,
+      duration_s,
+      correct:      answeredCorrectly.size,
+      wrong:        wrongCount,
+      stars,
+    }).catch(console.error);
+    if (victory) {
+      gameService.updateProgress(PROFILE_ID, LEVEL_ID, gameTypeId, stars).catch(console.error);
+    }
+  }
 
   const overlay = document.createElement('div');
   overlay.className = 'end-screen';

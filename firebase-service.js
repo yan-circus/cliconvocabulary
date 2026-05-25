@@ -142,4 +142,45 @@ window.gameService = {
     const doc = await db.collection('levels').doc(String(levelDocId)).get();
     return doc.exists ? { docId: doc.id, ...doc.data() } : null;
   },
+
+  // ── Scores & Progress ──────────────────────────────────────────────────────
+
+  saveScore: async (profileId, data) => {
+    if (!profileId) return;
+    return db.collection('profiles').doc(profileId)
+      .collection('scores').add({
+        ...data,
+        played_at: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+  },
+
+  getProgress: async (profileId) => {
+    if (!profileId) return { best_scores: {} };
+    const doc = await db.collection('profiles').doc(profileId)
+      .collection('progress').doc('cliconvocabulary').get();
+    return doc.exists ? doc.data() : { best_scores: {} };
+  },
+
+  // Saves stars for a level+mode, keeping the best (highest) value only
+  updateProgress: async (profileId, levelDocId, gameTypeId, stars) => {
+    if (!profileId) return;
+    const scoreKey = `${levelDocId}_${gameTypeId}`;
+    const ref = db.collection('profiles').doc(profileId)
+      .collection('progress').doc('cliconvocabulary');
+    return db.runTransaction(async tx => {
+      const doc     = await tx.get(ref);
+      const current = doc.exists ? (doc.data().best_scores?.[scoreKey] ?? 0) : 0;
+      if (doc.exists) {
+        tx.update(ref, {
+          last_played_at: firebase.firestore.FieldValue.serverTimestamp(),
+          [`best_scores.${scoreKey}`]: Math.max(current, stars),
+        });
+      } else {
+        tx.set(ref, {
+          last_played_at: firebase.firestore.FieldValue.serverTimestamp(),
+          best_scores: { [scoreKey]: stars },
+        });
+      }
+    });
+  },
 };

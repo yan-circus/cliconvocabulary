@@ -1,6 +1,6 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION     = 'v0.3.2';
+const VERSION     = 'v0.3.3';
 const COMMIT_HASH = '6dc9bb3';
 const COMMIT_DATE = '2026-05-25';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
@@ -11,6 +11,7 @@ const state = {
   levels:                [],
   selectedLevel:         null,
   selectedLevelWordCount: null,
+  progress:              { best_scores: {} },
 };
 let chronoEnabled = false;
 
@@ -64,6 +65,12 @@ function selectProfile(profileId, profileData) {
   const display = document.getElementById('user-display');
   if (display) display.textContent = profileData?.prenom || 'Joueur';
   showUserAvatar(profileData?.avatar_id || null);
+  loadProgress();
+}
+
+async function loadProgress() {
+  state.progress = await gameService.getProgress(currentProfileId);
+  if (state.selectedFamily) renderLevelGrid();
 }
 
 async function refreshProfilesCache() {
@@ -652,6 +659,14 @@ async function selectFamily(fam) {
 
 // ── Levels ────────────────────────────────────────────────────────────────────
 
+function _levelStars(lvl) {
+  if (selectedMode === 'learning') return '☆☆☆';
+  const gameTypeId = GAME_CONFIG.game_types[selectedMode] || 1;
+  const key        = `${lvl.docId}_${gameTypeId}`;
+  const stars      = state.progress?.best_scores?.[key] ?? 0;
+  return '★'.repeat(stars) + '☆'.repeat(3 - stars);
+}
+
 function renderLevelGrid() {
   const grid = document.getElementById('level-grid');
   grid.innerHTML = '';
@@ -668,7 +683,7 @@ function renderLevelGrid() {
         ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
         : `<div class="level-card-img-ph">🖼</div>`}
       <div class="level-card-name">${esc(lvl.title || lvl.name)}</div>
-      <div class="level-stars">★★★</div>
+      <div class="level-stars">${_levelStars(lvl)}</div>
       ${isSelected ? `<button class="level-card-play" title="Jouer"><div class="level-card-play-icon">▶</div></button>` : ''}
     `;
     card.addEventListener('click', () => onLevelClick(lvl));
@@ -748,6 +763,7 @@ document.querySelectorAll('.mode-entry').forEach(btn => {
     selectedMode = btn.dataset.mode;
     updateModeBtn();
     document.getElementById('mode-dropdown').classList.add('hidden');
+    if (state.selectedFamily) renderLevelGrid();
   });
 });
 
@@ -768,11 +784,12 @@ updateModeBtn();
 function launchGame(mode) {
   if (!state.selectedLevel) return;
   const p = new URLSearchParams({
-    level:  state.selectedLevel.docId,
+    level:   state.selectedLevel.docId,
     mode,
-    chrono: chronoEnabled ? '1' : '0',
-    avatar: profileAvatarId,
-    player: currentProfileData?.prenom || '',
+    chrono:  chronoEnabled ? '1' : '0',
+    avatar:  profileAvatarId,
+    player:  currentProfileData?.prenom || '',
+    profile: currentProfileId || '',
   });
   window.location.href = `game.html?${p}`;
 }
