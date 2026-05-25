@@ -13,7 +13,7 @@ const GAME_CONFIG = {
 
   // Seconds allowed per question in chrono mode, by game type
   chrono_s: {
-    findword:   5,
+    findword:   8,
     chooseword: 5,
     typeword:   20,
   },
