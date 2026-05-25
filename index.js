@@ -1,6 +1,6 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION     = 'v0.3.3';
+const VERSION     = 'v0.3.4';
 const COMMIT_HASH = '6dc9bb3';
 const COMMIT_DATE = '2026-05-25';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
@@ -784,6 +784,111 @@ document.getElementById('chrono-toggle').addEventListener('click', () => {
 
 updateModeBtn();
 document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
+
+// ── Score panel ───────────────────────────────────────────────────────────────
+
+const SCORE_MODES = [
+  { id: 'findword',   label: '👆 Find',   typeId: 1 },
+  { id: 'chooseword', label: '🔤 Choose', typeId: 2 },
+  { id: 'typeword',   label: '⌨ Type',   typeId: 3 },
+];
+
+let _scorePanelTab = 'mine';
+let _allLevels     = null;
+
+function _starsHtml(n) {
+  if (n === undefined || n === null) return '<span class="score-none">—</span>';
+  return '<span class="score-gold">' + '★'.repeat(n) + '</span>' + '<span class="score-empty">☆</span>'.repeat(3 - n);
+}
+
+async function openScorePanel() {
+  document.getElementById('score-overlay').classList.remove('hidden');
+  document.getElementById('score-content').innerHTML = '<div class="loading-msg">Chargement…</div>';
+  if (!_allLevels) _allLevels = await gameService.getAllLevels();
+  renderScoreTab(_scorePanelTab);
+}
+
+async function renderScoreTab(tab) {
+  _scorePanelTab = tab;
+  document.querySelectorAll('.score-tab').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.tab === tab)
+  );
+  const content = document.getElementById('score-content');
+  content.innerHTML = '<div class="loading-msg">Chargement…</div>';
+  if (tab === 'mine') await _renderMyScores(content);
+  else                await _renderRanking(content);
+}
+
+async function _renderMyScores(container) {
+  if (!currentProfileId) {
+    container.innerHTML = '<div class="loading-msg">Connectez-vous pour voir vos scores.</div>';
+    return;
+  }
+  const progress = await gameService.getProgress(currentProfileId);
+  const bs = progress.best_scores || {};
+  const levelIds = new Set(Object.keys(bs).map(k => k.substring(0, k.lastIndexOf('_'))));
+  if (!levelIds.size) { container.innerHTML = '<div class="loading-msg">Aucun score enregistré.</div>'; return; }
+
+  const levels = _allLevels.filter(l => levelIds.has(l.docId));
+  let html = `<table class="score-table"><thead><tr>
+    <th>Niveau</th>${SCORE_MODES.map(m => `<th>${m.label}</th>`).join('')}
+  </tr></thead><tbody>`;
+  levels.forEach(lvl => {
+    html += `<tr><td class="score-level-name">${esc(lvl.title || lvl.name)}</td>`;
+    SCORE_MODES.forEach(m => {
+      html += `<td class="score-stars">${_starsHtml(bs[`${lvl.docId}_${m.typeId}`])}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+async function _renderRanking(container) {
+  const profiles = cachedProfiles ?? await refreshProfilesCache();
+  if (!profiles.length) { container.innerHTML = '<div class="loading-msg">Aucun profil.</div>'; return; }
+
+  const progressMap = await gameService.getProgressForProfiles(profiles.map(p => p.id));
+  const levelIds = new Set();
+  Object.values(progressMap).forEach(prog =>
+    Object.keys(prog.best_scores || {}).forEach(k => levelIds.add(k.substring(0, k.lastIndexOf('_'))))
+  );
+  if (!levelIds.size) { container.innerHTML = '<div class="loading-msg">Aucun score enregistré.</div>'; return; }
+
+  const levels = _allLevels.filter(l => levelIds.has(l.docId));
+  let html = `<table class="score-table"><thead><tr>
+    <th>Joueur</th><th>Niveau</th>${SCORE_MODES.map(m => `<th>${m.label}</th>`).join('')}
+  </tr></thead><tbody>`;
+
+  profiles.forEach(profile => {
+    const bs = progressMap[profile.id]?.best_scores || {};
+    const played = levels.filter(lvl => SCORE_MODES.some(m => bs[`${lvl.docId}_${m.typeId}`] !== undefined));
+    if (!played.length) return;
+    played.forEach((lvl, i) => {
+      html += '<tr>';
+      if (i === 0) html += `<td class="score-player-name" rowspan="${played.length}">${esc(profile.prenom)}</td>`;
+      html += `<td class="score-level-name">${esc(lvl.title || lvl.name)}</td>`;
+      SCORE_MODES.forEach(m => {
+        html += `<td class="score-stars">${_starsHtml(bs[`${lvl.docId}_${m.typeId}`])}</td>`;
+      });
+      html += '</tr>';
+    });
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+document.getElementById('score-btn').addEventListener('click', openScorePanel);
+document.getElementById('score-close-btn').addEventListener('click', () =>
+  document.getElementById('score-overlay').classList.add('hidden')
+);
+document.querySelectorAll('.score-tab').forEach(btn =>
+  btn.addEventListener('click', () => renderScoreTab(btn.dataset.tab))
+);
+document.getElementById('score-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('score-overlay'))
+    document.getElementById('score-overlay').classList.add('hidden');
+});
 
 // ── Launch ────────────────────────────────────────────────────────────────────
 

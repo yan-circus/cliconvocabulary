@@ -351,6 +351,34 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   border-top: 1px solid var(--border); text-align: right; flex-shrink: 0;
 }
 
+/* Score panel */
+.score-panel    { max-width: 640px; }
+.score-tabs     {
+  display: flex; gap: 4px; padding: 12px 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.score-tab {
+  padding: 6px 18px; border-radius: 8px 8px 0 0; border: none;
+  background: transparent; font-size: 13px; font-weight: 600;
+  color: var(--text-muted); cursor: pointer; transition: color .15s;
+}
+.score-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+.score-content  { flex: 1; overflow-y: auto; padding: 12px 20px 20px; }
+.score-table    { width: 100%; border-collapse: collapse; font-size: 13px; }
+.score-table th {
+  text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em;
+  border-bottom: 1px solid var(--border);
+}
+.score-table td     { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.score-table tbody tr:last-child td { border-bottom: none; }
+.score-level-name   { font-weight: 600; }
+.score-player-name  { font-weight: 700; color: var(--accent); vertical-align: top; padding-top: 10px; }
+.score-stars        { white-space: nowrap; letter-spacing: 1px; }
+.score-gold         { color: #f59e0b; }
+.score-empty        { color: var(--border); }
+.score-none         { color: var(--text-muted); }
+
 .launch-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .launch-label { font-size: 14px; font-weight: 600; }
 .toggle-wrap  { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }

@@ -143,6 +143,26 @@ window.gameService = {
     return doc.exists ? { docId: doc.id, ...doc.data() } : null;
   },
 
+  getAllLevels: async () => {
+    const snap = await db.collection('levels').where('game_id', '==', GAME_ID).get();
+    return snap.docs.map(d => ({ docId: d.id, ...d.data() }))
+      .sort((a, b) => (a.family_id - b.family_id) || (a.id - b.id));
+  },
+
+  getProgressForProfiles: async (profileIds) => {
+    if (!profileIds.length) return {};
+    const docs = await Promise.all(
+      profileIds.map(id =>
+        db.collection('profiles').doc(id).collection('progress').doc('cliconvocabulary').get()
+      )
+    );
+    const result = {};
+    docs.forEach((doc, i) => {
+      result[profileIds[i]] = doc.exists ? doc.data() : { best_scores: {} };
+    });
+    return result;
+  },
+
   // ── Scores & Progress ──────────────────────────────────────────────────────
 
   saveScore: async (profileId, data) => {
