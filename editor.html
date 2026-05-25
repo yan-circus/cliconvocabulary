@@ -8,56 +8,10 @@
 </head>
 <body>
 
-<!-- ══ Auth ══════════════════════════════════════════════════════════════════ -->
-<div class="screen active" data-screen="auth">
-  <div class="auth-container">
-    <div class="auth-card">
-      <h1>CliConVocabulary</h1>
-      <p class="subtitle">Éditeur de niveaux — connexion requise</p>
-      <form id="login-form">
-        <div class="form-group">
-          <label>Email</label>
-          <input id="login-email" type="email" autocomplete="email" required>
-        </div>
-        <div class="form-group">
-          <label>Mot de passe</label>
-          <input id="login-pw" type="password" autocomplete="current-password" required>
-        </div>
-        <button id="login-btn" type="submit" class="btn btn-primary btn-full">Se connecter</button>
-      </form>
-      <div class="divider">ou</div>
-      <button id="google-login-btn" class="btn btn-google btn-full">Continuer avec Google</button>
-      <div id="auth-error" class="error-msg"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ Reauth ═════════════════════════════════════════════════════════════════ -->
-<div class="screen" data-screen="reauth">
-  <div class="auth-container">
-    <div class="auth-card">
-      <h1>Accès superviseur</h1>
-      <p class="subtitle">Confirmez votre identité pour accéder à l'éditeur.</p>
-      <form id="reauth-form">
-        <div id="reauth-pw-group" class="form-group">
-          <label>Mot de passe</label>
-          <input id="reauth-pw" type="password" autocomplete="current-password">
-        </div>
-        <button id="reauth-submit-btn" type="submit" class="btn btn-primary btn-full">Confirmer</button>
-      </form>
-      <p id="reauth-google-hint" style="display:none;color:var(--text-muted);font-size:13px;margin-bottom:10px;">
-        Cliquez sur le bouton ci-dessous pour confirmer votre identité Google.
-      </p>
-      <div class="divider">ou</div>
-      <button id="google-reauth-btn" class="btn btn-google btn-full">Confirmer avec Google</button>
-      <div id="reauth-error" class="error-msg"></div>
-    </div>
-  </div>
-</div>
-
 <!-- ══ Browser ════════════════════════════════════════════════════════════════ -->
 <div class="screen" data-screen="browser">
   <header class="browser-header">
+    <a href="index.html" class="btn btn-secondary">← Accueil</a>
     <h1>CliConVocabulary — Éditeur de niveaux</h1>
     <button id="logout-btn" class="btn btn-secondary">Déconnexion</button>
   </header>

@@ -1,6 +1,6 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION     = 'v0.3.0';
+const VERSION     = 'v0.3.1';
 const COMMIT_HASH = '6dc9bb3';
 const COMMIT_DATE = '2026-05-25';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
@@ -275,6 +275,7 @@ document.getElementById('supervisor-reauth-form').addEventListener('submit', asy
   btn.disabled = true;
   try {
     await gameService.reauthWithPassword(password);
+    sessionStorage.setItem('editor_reauth_ok', '1');
     document.getElementById('supervisor-auth').style.display    = 'none';
     document.getElementById('supervisor-options').style.display = 'flex';
   } catch(err) {
@@ -291,6 +292,7 @@ document.getElementById('supervisor-google-btn').addEventListener('click', async
   btn.disabled = true;
   try {
     await gameService.reauthWithGoogle();
+    sessionStorage.setItem('editor_reauth_ok', '1');
     document.getElementById('supervisor-auth').style.display    = 'none';
     document.getElementById('supervisor-options').style.display = 'flex';
   } catch(err) {
@@ -659,15 +661,23 @@ function renderLevelGrid() {
   }
   state.levels.forEach(lvl => {
     const card = document.createElement('div');
-    card.className = `level-card${state.selectedLevel?.docId === lvl.docId ? ' selected' : ''}`;
+    const isSelected = state.selectedLevel?.docId === lvl.docId;
+    card.className = `level-card${isSelected ? ' selected' : ''}`;
     card.innerHTML = `
       ${lvl.image_path
         ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
         : `<div class="level-card-img-ph">🖼</div>`}
       <div class="level-card-name">${esc(lvl.title || lvl.name)}</div>
       <div class="level-stars">★★★</div>
+      ${isSelected ? `<button class="level-card-play" title="Jouer"><div class="level-card-play-icon">▶</div></button>` : ''}
     `;
     card.addEventListener('click', () => onLevelClick(lvl));
+    if (isSelected) {
+      card.querySelector('.level-card-play').addEventListener('click', e => {
+        e.stopPropagation();
+        openLaunchPanel();
+      });
+    }
     grid.appendChild(card);
   });
 }
@@ -690,19 +700,16 @@ function onLevelClick(lvl) {
 }
 
 function updateFooter() {
-  const empty   = document.getElementById('footer-empty');
-  const info    = document.getElementById('footer-info');
-  const playBtn = document.getElementById('footer-play-btn');
+  const empty = document.getElementById('footer-empty');
+  const info  = document.getElementById('footer-info');
 
   if (!state.selectedLevel) {
     empty.classList.remove('hidden');
     info.classList.add('hidden');
-    playBtn.classList.add('hidden');
     return;
   }
   empty.classList.add('hidden');
   info.classList.remove('hidden');
-  playBtn.classList.remove('hidden');
   document.getElementById('footer-name').textContent = state.selectedLevel.title || state.selectedLevel.name;
 
   const parts = [];
@@ -726,7 +733,6 @@ function closeLaunchPanel() {
   document.getElementById('launch-overlay').classList.add('hidden');
 }
 
-document.getElementById('footer-play-btn').addEventListener('click', openLaunchPanel);
 document.getElementById('launch-cancel-btn').addEventListener('click', closeLaunchPanel);
 document.getElementById('launch-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('launch-overlay')) closeLaunchPanel();

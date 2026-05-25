@@ -55,52 +55,9 @@ function setLoading(btn, on) {
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 window.onEditorAuthChanged = (user) => {
-  if (!user) { showScreen('auth'); return; }
-  showReauthScreen();
+  if (!user) { window.location.href = 'index.html'; return; }
+  loadBrowser();
 };
-
-function showReauthScreen() {
-  const isGoogle = editorService.getProvider() === 'google.com';
-  document.getElementById('reauth-pw-group').style.display    = isGoogle ? 'none'  : 'block';
-  document.getElementById('reauth-submit-btn').style.display  = isGoogle ? 'none'  : 'block';
-  document.getElementById('reauth-google-hint').style.display = isGoogle ? 'block' : 'none';
-  showErr('reauth-error', '');
-  showScreen('reauth');
-}
-
-async function handleLogin(e) {
-  e.preventDefault();
-  const btn = document.getElementById('login-btn');
-  setLoading(btn, true);
-  try {
-    await editorService.signIn(
-      document.getElementById('login-email').value.trim(),
-      document.getElementById('login-pw').value
-    );
-  } catch (err) { showErr('auth-error', err.message); }
-  finally       { setLoading(btn, false); }
-}
-
-async function handleGoogleLogin() {
-  try   { await editorService.signInWithGoogle(); }
-  catch (err) { showErr('auth-error', err.message); }
-}
-
-async function handleReauth(e) {
-  e.preventDefault();
-  const btn = document.getElementById('reauth-submit-btn');
-  setLoading(btn, true);
-  try {
-    await editorService.reauthPassword(document.getElementById('reauth-pw').value);
-    await loadBrowser();
-  } catch (err) { showErr('reauth-error', err.message); }
-  finally       { setLoading(btn, false); }
-}
-
-async function handleGoogleReauth() {
-  try   { await editorService.reauthGoogle(); await loadBrowser(); }
-  catch (err) { showErr('reauth-error', err.message); }
-}
 
 async function handleLogout() {
   if (state.isDirty && !confirm('Des modifications non sauvegardées seront perdues. Continuer ?')) return;
@@ -958,14 +915,6 @@ function handleStyleSelect(e) {
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-
-  // Auth
-  document.getElementById('login-form').addEventListener('submit', handleLogin);
-  document.getElementById('google-login-btn').addEventListener('click', handleGoogleLogin);
-
-  // Reauth
-  document.getElementById('reauth-form').addEventListener('submit', handleReauth);
-  document.getElementById('google-reauth-btn').addEventListener('click', handleGoogleReauth);
 
   // Browser
   document.getElementById('logout-btn').addEventListener('click', handleLogout);
