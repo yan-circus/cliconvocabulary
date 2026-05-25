@@ -842,7 +842,11 @@ async function _renderMyScores(container) {
   }
   const progress = await gameService.getProgress(currentProfileId);
   const bs = progress.best_scores || {};
+  console.log('[scores] profileId:', currentProfileId);
+  console.log('[scores] best_scores:', bs);
+  console.log('[scores] _allLevels count:', _allLevels?.length);
   const levelIds = new Set(Object.keys(bs).map(k => k.substring(0, k.lastIndexOf('_'))));
+  console.log('[scores] levelIds from best_scores:', [...levelIds]);
   if (!levelIds.size) { container.innerHTML = '<div class="loading-msg">Aucun score enregistré.</div>'; return; }
 
   const levels = _allLevels.filter(l => levelIds.has(l.docId));
