@@ -796,17 +796,8 @@ const SCORE_MODES = [
 let _scorePanelTab = 'mine';
 let _allLevels     = null;
 
-async function _ensureBestPoints(profileId, progress) {
-  if (progress.best_points) return progress.best_points;
-  const history = await gameService.getScoreHistory(profileId);
-  const bp = {};
-  history.forEach(s => {
-    if (!s.level_id || !s.game_type_id) return;
-    const key = `${s.level_id}_${s.game_type_id}`;
-    bp[key] = Math.max(bp[key] ?? 0, s.score ?? 0);
-  });
-  gameService.backfillBestPoints(profileId, bp).catch(console.error);
-  return bp;
+function _bestPoints(progress) {
+  return progress.best_points || {};
 }
 
 function _cellHtml(stars, points) {
@@ -821,7 +812,7 @@ async function openScorePanel() {
   document.getElementById('score-overlay').classList.remove('hidden');
   document.getElementById('score-content').innerHTML = '<div class="loading-msg">Chargement…</div>';
   if (!_allLevels) _allLevels = await gameService.getAllLevels();
-  renderScoreTab(_scorePanelTab);
+  await renderScoreTab(_scorePanelTab);
 }
 
 async function renderScoreTab(tab) {
@@ -831,8 +822,13 @@ async function renderScoreTab(tab) {
   );
   const content = document.getElementById('score-content');
   content.innerHTML = '<div class="loading-msg">Chargement…</div>';
-  if (tab === 'mine') await _renderMyScores(content);
-  else                await _renderRanking(content);
+  try {
+    if (tab === 'mine') await _renderMyScores(content);
+    else                await _renderRanking(content);
+  } catch (e) {
+    console.error('[scores]', e);
+    content.innerHTML = '<div class="loading-msg">Erreur de chargement.</div>';
+  }
 }
 
 async function _renderMyScores(container) {
@@ -842,18 +838,14 @@ async function _renderMyScores(container) {
   }
   const progress = await gameService.getProgress(currentProfileId);
   const bs = progress.best_scores || {};
-  console.log('[scores] profileId:', currentProfileId);
-  console.log('[scores] best_scores:', bs);
-  console.log('[scores] _allLevels count:', _allLevels?.length);
   const levelIds = new Set(Object.keys(bs).map(k => k.substring(0, k.lastIndexOf('_'))));
-  console.log('[scores] levelIds from best_scores:', [...levelIds]);
   if (!levelIds.size) { container.innerHTML = '<div class="loading-msg">Aucun score enregistré.</div>'; return; }
 
   const levels = _allLevels.filter(l => levelIds.has(l.docId));
   let html = `<table class="score-table"><thead><tr>
     <th>Niveau</th>${SCORE_MODES.map(m => `<th>${m.label}</th>`).join('')}
   </tr></thead><tbody>`;
-  const bp = await _ensureBestPoints(currentProfileId, progress);
+  const bp = _bestPoints(progress);
   levels.forEach(lvl => {
     html += `<tr><td class="score-level-name">${esc(lvl.title || lvl.name)}</td>`;
     SCORE_MODES.forEach(m => {
@@ -883,9 +875,7 @@ async function _renderRanking(container) {
   </tr></thead><tbody>`;
 
   const bpMap = {};
-  await Promise.all(profiles.map(async p => {
-    bpMap[p.id] = await _ensureBestPoints(p.id, progressMap[p.id] || {});
-  }));
+  profiles.forEach(p => { bpMap[p.id] = _bestPoints(progressMap[p.id] || {}); });
 
   for (const profile of profiles) {
     const bs     = progressMap[profile.id]?.best_scores || {};
