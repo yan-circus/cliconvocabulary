@@ -796,6 +796,19 @@ const SCORE_MODES = [
 let _scorePanelTab = 'mine';
 let _allLevels     = null;
 
+async function _ensureBestPoints(profileId, progress) {
+  if (progress.best_points) return progress.best_points;
+  const history = await gameService.getScoreHistory(profileId);
+  const bp = {};
+  history.forEach(s => {
+    if (!s.level_id || !s.game_type_id) return;
+    const key = `${s.level_id}_${s.game_type_id}`;
+    bp[key] = Math.max(bp[key] ?? 0, s.score ?? 0);
+  });
+  gameService.backfillBestPoints(profileId, bp).catch(console.error);
+  return bp;
+}
+
 function _cellHtml(stars, points) {
   if (stars === undefined || stars === null) return '<span class="score-none">—</span>';
   const s = '<span class="score-gold">' + '★'.repeat(stars) + '</span>'
@@ -836,7 +849,7 @@ async function _renderMyScores(container) {
   let html = `<table class="score-table"><thead><tr>
     <th>Niveau</th>${SCORE_MODES.map(m => `<th>${m.label}</th>`).join('')}
   </tr></thead><tbody>`;
-  const bp = progress.best_points || {};
+  const bp = await _ensureBestPoints(currentProfileId, progress);
   levels.forEach(lvl => {
     html += `<tr><td class="score-level-name">${esc(lvl.title || lvl.name)}</td>`;
     SCORE_MODES.forEach(m => {
@@ -869,7 +882,7 @@ async function _renderRanking(container) {
     const bs = progressMap[profile.id]?.best_scores || {};
     const played = levels.filter(lvl => SCORE_MODES.some(m => bs[`${lvl.docId}_${m.typeId}`] !== undefined));
     if (!played.length) return;
-    const bp = progressMap[profile.id]?.best_points || {};
+    const bp = await _ensureBestPoints(profile.id, progressMap[profile.id] || {});
     played.forEach((lvl, i) => {
       html += '<tr>';
       if (i === 0) html += `<td class="score-player-name" rowspan="${played.length}">${esc(profile.prenom)}</td>`;
