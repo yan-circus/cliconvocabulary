@@ -105,13 +105,8 @@ function loadImage() {
   const img = document.getElementById('game-image');
   img.addEventListener('load', () => renderCurrent());
   img.src = levelData.image_path || '';
-  let _resizeRaf = null;
-  window.addEventListener('resize', () => {
-    if (_resizeRaf) cancelAnimationFrame(_resizeRaf);
-    _resizeRaf = requestAnimationFrame(() => {
-      _resizeRaf = requestAnimationFrame(() => { _resizeRaf = null; renderCurrent(); });
-    });
-  });
+  new ResizeObserver(() => renderCurrent())
+    .observe(document.getElementById('game-image-area'));
 }
 
 // In findword mode the active point must not be revealed before the player answers
@@ -157,14 +152,11 @@ function loseLife() {
 
 function getImageRect() {
   const img = document.getElementById('game-image');
-  const ctr = document.getElementById('game-image-area');
+  const svg = document.getElementById('game-svg');
   if (!img.naturalWidth) return null;
-  const nR = img.naturalWidth / img.naturalHeight;
-  const cR = ctr.clientWidth  / ctr.clientHeight;
-  let dW, dH, oX, oY;
-  if (nR > cR) { dW = ctr.clientWidth;  dH = dW / nR;  oX = 0; oY = (ctr.clientHeight - dH) / 2; }
-  else         { dH = ctr.clientHeight; dW = dH * nR;  oY = 0; oX = (ctr.clientWidth  - dW) / 2; }
-  return { x: oX, y: oY, width: dW, height: dH };
+  const iR = img.getBoundingClientRect();
+  const sR = svg.getBoundingClientRect();
+  return { x: iR.left - sR.left, y: iR.top - sR.top, width: iR.width, height: iR.height };
 }
 
 function toSvg(pct, r) {
