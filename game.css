@@ -508,7 +508,8 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .type-cell-filled { border-color: #6c5ce7; }
 .type-cell-active { border-color: #fff; }
 .type-cell-active::after { content: '|'; font-weight: 300; animation: type-blink 1s step-end infinite; }
-.type-sep { font-size: 22px; font-weight: 800; color: rgba(255,255,255,.6); align-self: flex-end; margin-bottom: 6px; }
+.type-sep      { font-size: 22px; font-weight: 800; color: rgba(255,255,255,.6); align-self: flex-end; margin-bottom: 6px; }
+.type-word-gap { width: 22px; flex-shrink: 0; }
 @keyframes type-blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
 
 /* On-screen AZERTY keyboard */

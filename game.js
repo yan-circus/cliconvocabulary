@@ -433,12 +433,35 @@ const AZERTY_ROWS = [
   ['W','X','C','V','B','N','⌫'],
 ];
 
+// ── TypeWord rules ────────────────────────────────────────────────────────────
+// Rule 1: spaces in compound words (e.g. "guinea fowl") become visual
+//         word-break separators — the player never types a space.
+
+function twBuildTemplate(answer) {
+  return answer.split('').map(c => {
+    if (/[a-zA-Z]/.test(c)) return { type: 'letter' };
+    if (c === ' ')           return { type: 'space' };
+    return { type: 'sep', char: c };
+  });
+}
+
+function twReconstruct(typed, template) {
+  let li = 0;
+  return template.map(t => {
+    if (t.type === 'letter') return typed[li++];
+    if (t.type === 'space')  return ' ';
+    return t.char;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function setupTypeWord() {
   const zone   = document.getElementById('question-zone');
   zone.innerHTML = '';
 
   const answer      = (allWords[activeIdx].en || '').trim();
-  const template    = answer.split('').map(c => (/[a-zA-Z]/.test(c) ? { type: 'letter' } : { type: 'sep', char: c }));
+  const template    = twBuildTemplate(answer);
   const letterCount = template.filter(t => t.type === 'letter').length;
   let typed = [];
 
@@ -448,7 +471,11 @@ function setupTypeWord() {
   const cells = [];
 
   template.forEach(t => {
-    if (t.type === 'sep') {
+    if (t.type === 'space') {
+      const gap = document.createElement('span');
+      gap.className = 'type-word-gap';
+      boxes.appendChild(gap);
+    } else if (t.type === 'sep') {
       const sep = document.createElement('span');
       sep.className = 'type-sep';
       sep.textContent = t.char;
@@ -484,9 +511,7 @@ function setupTypeWord() {
       render();
       if (typed.length === letterCount) {
         stopChrono();
-        let li = 0;
-        const full = template.map(t => t.type === 'sep' ? t.char : typed[li++]).join('');
-        handleTypeWordAnswer(full);
+        handleTypeWordAnswer(twReconstruct(typed, template));
       }
     }
   }
