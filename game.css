@@ -422,16 +422,13 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   display: flex; align-items: center; padding: 8px 12px; gap: 8px;
   background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
-.game-score {
-  display: flex; align-items: center; gap: 4px; min-width: 80px;
-  font-size: 18px; font-weight: 800; color: var(--primary);
-}
-.game-score .score-label { font-size: 11px; font-weight: 600; color: var(--text-muted); }
-.game-lives { display: flex; align-items: center; gap: 2px; justify-content: flex-end; }
+.game-lives-area { display: flex; align-items: center; gap: 6px; }
+.game-score { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
+.game-lives { display: flex; align-items: center; gap: 2px; }
 .game-player { display: flex; align-items: center; gap: 6px; margin-left: 8px; }
 .game-avatar  { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 #game-player-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
-.life      { font-size: 20px; line-height: 1; }
+.life      { font-size: 2.5rem; line-height: 1; color: #e74c3c; }
 .life.lost { filter: grayscale(1); opacity: .25; }
 
 /* Question zone */

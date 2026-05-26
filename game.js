@@ -75,7 +75,7 @@ async function init() {
     loadImage();
 
     if (MODE === 'learning') {
-      document.querySelector('.game-score').style.visibility = 'hidden';
+      document.querySelector('.game-lives-area').style.visibility = 'hidden';
       setupLearning();
     } else {
       setupPlay();
