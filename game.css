@@ -464,7 +464,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .game-stop-btn:hover { opacity: 1; }
 .game-lives-area { display: flex; align-items: center; gap: 6px; }
 .game-counter {
-  position: absolute; bottom: 10px; right: 12px;
+  position: absolute; top: 10px; right: 12px;
   font-size: 13px; font-weight: 700; color: #fff;
   background: rgba(0,0,0,.45); border-radius: 6px;
   padding: 2px 8px; pointer-events: none; z-index: 10;
