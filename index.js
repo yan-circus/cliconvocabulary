@@ -709,6 +709,7 @@ function renderLevelGrid() {
         : `<div class="level-card-img-ph">🖼</div>`}
       <div class="level-card-name">${esc(lvl.title || lvl.name)}</div>
       <div class="level-stars">${_levelStars(lvl)}</div>
+      ${denied ? `<div class="level-lock-overlay">🔒</div>` : ''}
       ${isSelected ? `<button class="level-card-play" title="Jouer"><div class="level-card-play-icon">▶</div></button>` : ''}
     `;
     if (!denied) {

@@ -216,9 +216,13 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .supervisor-option-danger:hover { background: #fef0f0; }
 
 /* Locked level card on home screen */
-.level-card.level-locked { opacity: 0.45; cursor: default; position: relative; }
-.level-card.level-locked::after {
-  content: '🔒'; position: absolute; top: 6px; right: 6px; font-size: 16px; line-height: 1;
+.level-card.level-locked { filter: grayscale(40%) brightness(0.7); cursor: default; }
+.level-lock-overlay {
+  position: absolute; top: 6px; right: 6px;
+  font-size: 18px; line-height: 1;
+  background: rgba(0,0,0,.55); border-radius: 50%;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
 }
 
 /* Family tabs */
