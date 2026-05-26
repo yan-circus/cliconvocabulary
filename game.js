@@ -289,36 +289,71 @@ function renderMarkers(highlightIdx = activeIdx, wrongIdx = -1) {
 
 // ── Learning mode ─────────────────────────────────────────────────────────────
 
+let _learnSortAsc = true;
+
 function setupLearning() {
   activeIdx = -1;
-  const list = document.createElement('div');
-  list.className = 'learning-list'; list.id = 'learning-list';
-  document.getElementById('game-body').insertBefore(list, document.getElementById('game-image-area'));
-  renderLearningList(-1);
 
-  document.getElementById('question-zone').innerHTML =
-    '<div class="question-hint">Cliquez sur un mot ou sur un point de l\'image</div>';
+  const container = document.createElement('div');
+  container.className = 'learning-container'; container.id = 'learning-container';
+
+  container.innerHTML = `
+    <div class="learning-header">
+      <button id="learn-sort-btn" class="learn-sort-btn" title="Trier">A↑</button>
+      <span id="learn-word-count" class="learn-word-count"></span>
+    </div>
+    <div class="learning-list" id="learning-list"></div>
+  `;
+  document.getElementById('game-body').insertBefore(container, document.getElementById('game-image-area'));
+
+  document.getElementById('learn-sort-btn').addEventListener('click', () => {
+    _learnSortAsc = !_learnSortAsc;
+    document.getElementById('learn-sort-btn').textContent = _learnSortAsc ? 'A↑' : 'A↓';
+    renderLearningList(activeIdx);
+  });
+
+  renderLearningList(-1);
+  document.getElementById('question-zone').innerHTML = '';
   renderMarkers(-1);
+}
+
+function _learningQuestion(selIdx) {
+  const qz = document.getElementById('question-zone');
+  if (!qz) return;
+  if (selIdx < 0 || !allWords[selIdx]) { qz.innerHTML = ''; return; }
+  const w = allWords[selIdx];
+  qz.innerHTML = `<div class="question-word">${esc(w.en || w.fr)}</div>` +
+    (w.fr ? `<span class="question-hint"> / ${esc(w.fr)}</span>` : '');
 }
 
 function renderLearningList(selIdx) {
   const list = document.getElementById('learning-list');
   if (!list) return;
+
+  const indices = allWords.map((_, i) => i).sort((a, b) => {
+    const cmp = (allWords[a].en || allWords[a].fr).localeCompare(allWords[b].en || allWords[b].fr);
+    return _learnSortAsc ? cmp : -cmp;
+  });
+
+  document.getElementById('learn-word-count').textContent = `${allWords.length} mots`;
   list.innerHTML = '';
-  allWords.forEach((w, i) => {
+  indices.forEach(i => {
+    const w = allWords[i];
     const item = document.createElement('div');
     item.className = `learn-word-item${i === selIdx ? ' active' : ''}`;
-    item.innerHTML = `<div class="learn-word-en">${esc(w.en || w.fr)}</div>` +
-                     (w.fr ? `<div class="learn-word-fr">${esc(w.fr)}</div>` : '');
-    item.addEventListener('click', () => { activeIdx = i; renderLearningList(i); renderMarkers(i); });
+    item.innerHTML = `<div class="learn-word-en">${esc(w.en || w.fr)}</div>`;
+    item.addEventListener('click', () => { activeIdx = i; renderLearningList(i); renderMarkers(i); _learningQuestion(i); });
     list.appendChild(item);
   });
-  if (selIdx >= 0) list.querySelectorAll('.learn-word-item')[selIdx]?.scrollIntoView({ block: 'nearest' });
+
+  const displayPos = indices.indexOf(selIdx);
+  if (displayPos >= 0) list.querySelectorAll('.learn-word-item')[displayPos]?.scrollIntoView({ block: 'nearest' });
+  _learningQuestion(selIdx);
 }
 
 function onMarkerClick(idx) {
   if (MODE === 'learning') {
-    activeIdx = idx; renderLearningList(idx); renderMarkers(idx);
+    activeIdx = idx; renderLearningList(idx); renderMarkers(idx); _learningQuestion(idx);
   } else if (MODE === 'findword') {
     handleClicWordAnswer(idx);
   }
