@@ -92,7 +92,7 @@ body {
 .access-table-wrap::-webkit-scrollbar-thumb { background: #3a3a5e; border-radius: 4px; }
 
 .access-matrix {
-  border-collapse: collapse; width: max-content; min-width: 100%;
+  border-collapse: collapse; width: max-content;
 }
 
 /* Sticky header row */
@@ -126,7 +126,7 @@ body {
   display: flex; align-items: center; gap: 6px;
   padding: 3px 8px; white-space: nowrap;
 }
-.matrix-level-name { font-size: 12px; font-weight: 600; flex: 1; }
+.matrix-level-name { font-size: 12px; font-weight: 600; }
 .matrix-row-bulk { display: flex; gap: 2px; flex-shrink: 0; }
 
 /* Player header */
