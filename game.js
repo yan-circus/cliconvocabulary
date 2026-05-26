@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.3.4';
+const VERSION = 'v0.3.5';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -76,6 +76,8 @@ async function init() {
 
     if (MODE === 'learning') {
       document.querySelector('.game-lives-area').style.visibility = 'hidden';
+      const stopBtn = document.querySelector('.game-stop-btn');
+      if (stopBtn) { stopBtn.textContent = '←'; stopBtn.title = 'Retour'; }
       setupLearning();
     } else {
       setupPlay();
@@ -322,8 +324,10 @@ function _learningQuestion(selIdx) {
   if (!qz) return;
   if (selIdx < 0 || !allWords[selIdx]) { qz.innerHTML = ''; return; }
   const w = allWords[selIdx];
-  qz.innerHTML = `<div class="question-word">${esc(w.en || w.fr)}</div>` +
-    (w.fr ? `<span class="question-hint"> / ${esc(w.fr)}</span>` : '');
+  qz.innerHTML = `<div class="question-learning">` +
+    `<span class="question-word">${esc(w.en || w.fr)}</span>` +
+    (w.fr ? `<span class="question-sep"> / </span><span class="question-fr">${esc(w.fr)}</span>` : '') +
+    `</div>`;
 }
 
 function renderLearningList(selIdx) {

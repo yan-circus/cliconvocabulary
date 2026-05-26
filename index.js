@@ -1,6 +1,6 @@
 // index.js — CliConVocabulary level browser
 
-const VERSION     = 'v0.3.4';
+const VERSION     = 'v0.3.5';
 const COMMIT_HASH = '6dc9bb3';
 const COMMIT_DATE = '2026-05-25';
 console.log('%cCliConVocabulary ' + VERSION, 'color:#6c5ce7;font-weight:bold;font-size:14px');
@@ -670,6 +670,17 @@ function _levelStars(lvl) {
   return '★'.repeat(stars) + '☆'.repeat(3 - stars);
 }
 
+function _isDenied(lvl) {
+  if (currentProfileData?.is_supervisor) return false;
+  const denied = currentProfileData?.denied_levels || [];
+  return denied.includes(lvl.docId);
+}
+
+function _showLockedLevels() {
+  const sup = (cachedProfiles || []).find(p => p.is_supervisor);
+  return sup?.show_locked_levels ?? true;
+}
+
 function renderLevelGrid() {
   const grid = document.getElementById('level-grid');
   grid.innerHTML = '';
@@ -677,10 +688,21 @@ function renderLevelGrid() {
     grid.innerHTML = '<div class="loading-msg">Aucun niveau dans cette famille.</div>';
     return;
   }
-  state.levels.filter(lvl => lvl.valid !== false).forEach(lvl => {
+  const showLocked = _showLockedLevels();
+  const visible = state.levels.filter(lvl => {
+    if (lvl.valid === false) return false;
+    if (_isDenied(lvl) && !showLocked) return false;
+    return true;
+  });
+  if (visible.length === 0) {
+    grid.innerHTML = '<div class="loading-msg">Aucun niveau accessible.</div>';
+    return;
+  }
+  visible.forEach(lvl => {
+    const denied     = _isDenied(lvl);
+    const isSelected = !denied && state.selectedLevel?.docId === lvl.docId;
     const card = document.createElement('div');
-    const isSelected = state.selectedLevel?.docId === lvl.docId;
-    card.className = `level-card${isSelected ? ' selected' : ''}`;
+    card.className = `level-card${isSelected ? ' selected' : ''}${denied ? ' level-locked' : ''}`;
     card.innerHTML = `
       ${lvl.image_path
         ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
@@ -689,12 +711,14 @@ function renderLevelGrid() {
       <div class="level-stars">${_levelStars(lvl)}</div>
       ${isSelected ? `<button class="level-card-play" title="Jouer"><div class="level-card-play-icon">▶</div></button>` : ''}
     `;
-    card.addEventListener('click', () => onLevelClick(lvl));
-    if (isSelected) {
-      card.querySelector('.level-card-play').addEventListener('click', e => {
-        e.stopPropagation();
-        launchGame(selectedMode);
-      });
+    if (!denied) {
+      card.addEventListener('click', () => onLevelClick(lvl));
+      if (isSelected) {
+        card.querySelector('.level-card-play').addEventListener('click', e => {
+          e.stopPropagation();
+          launchGame(selectedMode);
+        });
+      }
     }
     grid.appendChild(card);
   });
@@ -908,6 +932,250 @@ document.getElementById('score-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('score-overlay'))
     document.getElementById('score-overlay').classList.add('hidden');
 });
+
+// ── Access panel ─────────────────────────────────────────────────────────────
+
+const _access = {
+  allLevels:           null,
+  selectedProfileId:   null,  // profile id or 'all'
+  selectedFamilyDocId: null,
+  selectedDiff:        null,  // null = all difficulties
+  deniedMap:           {},    // profileId -> Set<levelDocId>
+  showLocked:          true,
+  supervisorProfileId: null,
+};
+
+function _supervisorProfile() {
+  return (cachedProfiles || []).find(p => p.is_supervisor) || null;
+}
+
+function _nonSupervisorProfiles() {
+  return (cachedProfiles || []).filter(p => !p.is_supervisor);
+}
+
+document.getElementById('access-btn').addEventListener('click', () => {
+  document.getElementById('supervisor-overlay').classList.add('hidden');
+  openAccessPanel();
+});
+document.getElementById('access-close').addEventListener('click', () =>
+  document.getElementById('access-overlay').classList.add('hidden')
+);
+document.getElementById('access-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('access-overlay'))
+    document.getElementById('access-overlay').classList.add('hidden');
+});
+document.getElementById('access-save-btn').addEventListener('click', _accessSave);
+
+async function openAccessPanel() {
+  document.getElementById('access-overlay').classList.remove('hidden');
+  document.getElementById('access-content').innerHTML = '<div class="loading-msg">Chargement…</div>';
+  document.getElementById('access-error').textContent = '';
+
+  const supervisor = _supervisorProfile();
+  _access.supervisorProfileId = supervisor?.id || null;
+  _access.showLocked = supervisor?.show_locked_levels ?? true;
+
+  const players = _nonSupervisorProfiles();
+  _access.selectedProfileId = players[0]?.id || 'all';
+
+  if (!_allLevels) _allLevels = await gameService.getAllLevels();
+  _access.allLevels = _allLevels;
+
+  _access.deniedMap = {};
+  (cachedProfiles || []).filter(p => !p.is_supervisor).forEach(p => {
+    _access.deniedMap[p.id] = new Set(p.denied_levels || []);
+  });
+
+  _access.selectedFamilyDocId = state.families[0]?.docId || null;
+  _access.selectedDiff = null;
+
+  _renderAccessPanel();
+}
+
+function _accessFamLevels() {
+  const fam = state.families.find(f => f.docId === _access.selectedFamilyDocId);
+  if (!fam) return [];
+  return (_access.allLevels || []).filter(l =>
+    Number(l.family_id) === Number(fam.id) && l.valid !== false
+  );
+}
+
+function _accessViewLevels() {
+  const famLevels = _accessFamLevels();
+  return _access.selectedDiff
+    ? famLevels.filter(l => l.notes === _access.selectedDiff)
+    : famLevels;
+}
+
+function _accessIsAllowed(levelDocId) {
+  if (_access.selectedProfileId === 'all') {
+    const players = _nonSupervisorProfiles();
+    if (!players.length) return true;
+    return players.every(p => !_access.deniedMap[p.id]?.has(levelDocId));
+  }
+  return !_access.deniedMap[_access.selectedProfileId]?.has(levelDocId);
+}
+
+function _accessIsIndeterminate(levelDocId) {
+  if (_access.selectedProfileId !== 'all') return false;
+  const players = _nonSupervisorProfiles();
+  if (players.length < 2) return false;
+  const allowed = players.filter(p => !_access.deniedMap[p.id]?.has(levelDocId)).length;
+  return allowed > 0 && allowed < players.length;
+}
+
+function _accessToggleLevel(levelDocId, allow) {
+  const targets = _access.selectedProfileId === 'all'
+    ? _nonSupervisorProfiles().map(p => p.id)
+    : [_access.selectedProfileId];
+  targets.forEach(pid => {
+    if (!_access.deniedMap[pid]) _access.deniedMap[pid] = new Set();
+    if (allow) _access.deniedMap[pid].delete(levelDocId);
+    else       _access.deniedMap[pid].add(levelDocId);
+  });
+}
+
+function _renderAccessPanel() {
+  const container = document.getElementById('access-content');
+  const players   = _nonSupervisorProfiles();
+  const famLevels = _accessFamLevels();
+  const viewLevels = _accessViewLevels();
+
+  // Player selector
+  let playerOpts = players.map(p =>
+    `<option value="${esc(p.id)}" ${_access.selectedProfileId === p.id ? 'selected' : ''}>${esc(p.prenom)}</option>`
+  ).join('');
+  playerOpts += `<option value="all" ${_access.selectedProfileId === 'all' ? 'selected' : ''}>— Tous les joueurs —</option>`;
+
+  // Family tabs
+  const famTabs = state.families.map(f =>
+    `<button class="access-family-tab ${_access.selectedFamilyDocId === f.docId ? 'active' : ''}" data-fam="${esc(f.docId)}">${esc(f.name)}</button>`
+  ).join('');
+
+  // Difficulty chips (from notes field)
+  const diffs = [...new Set(famLevels.map(l => l.notes).filter(Boolean))].sort();
+  const diffBar = diffs.length ? `
+    <div class="access-diff-bar">
+      <span class="access-diff-label">Difficulté :</span>
+      <button class="access-diff-chip ${!_access.selectedDiff ? 'active' : ''}" data-diff="">Tout</button>
+      ${diffs.map(d => `<button class="access-diff-chip ${_access.selectedDiff === d ? 'active' : ''}" data-diff="${esc(d)}">${esc(d)}</button>`).join('')}
+    </div>` : '';
+
+  // Level rows
+  const levelRows = viewLevels.map(lvl => {
+    const allowed = _accessIsAllowed(lvl.docId);
+    const indet   = _accessIsIndeterminate(lvl.docId);
+    return `<label class="access-level-row">
+      <input type="checkbox" class="access-cb" data-id="${esc(lvl.docId)}"
+        ${allowed ? 'checked' : ''} ${indet ? 'data-indet' : ''}>
+      <span class="access-level-name">${esc(lvl.title || lvl.name)}</span>
+      ${lvl.notes ? `<span class="access-level-diff">${esc(lvl.notes)}</span>` : ''}
+    </label>`;
+  }).join('') || '<div class="loading-msg" style="font-size:12px">Aucun niveau dans cette famille.</div>';
+
+  // Show-locked toggle
+  const lActive = _access.showLocked  ? 'active' : '';
+  const hActive = !_access.showLocked ? 'active' : '';
+
+  container.innerHTML = `
+    <div class="access-player-row">
+      <span class="access-player-label">Joueur</span>
+      <select class="access-player-select" id="access-player-sel">${playerOpts}</select>
+    </div>
+    <div class="access-family-tabs">${famTabs}</div>
+    ${diffBar}
+    <div class="access-bulk-row">
+      <button class="access-bulk-btn" id="access-check-all">✓ Tout autoriser</button>
+      <button class="access-bulk-btn" id="access-uncheck-all">✗ Tout bloquer</button>
+    </div>
+    <div class="access-level-list">${levelRows}</div>
+    <div class="access-toggle-row">
+      <span class="access-toggle-label">Niveaux non autorisés :</span>
+      <div class="access-toggle-btns">
+        <button class="access-toggle-btn ${lActive}" id="access-btn-locked">🔒 Verrouillé</button>
+        <button class="access-toggle-btn ${hActive}" id="access-btn-hidden">⊘ Masqué</button>
+      </div>
+    </div>
+  `;
+
+  // Set indeterminate
+  container.querySelectorAll('.access-cb[data-indet]').forEach(cb => { cb.indeterminate = true; });
+
+  // Events
+  document.getElementById('access-player-sel').addEventListener('change', e => {
+    _access.selectedProfileId = e.target.value;
+    _renderAccessPanel();
+  });
+
+  container.querySelectorAll('.access-family-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _access.selectedFamilyDocId = btn.dataset.fam;
+      _access.selectedDiff = null;
+      _renderAccessPanel();
+    });
+  });
+
+  container.querySelectorAll('.access-diff-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _access.selectedDiff = btn.dataset.diff || null;
+      _renderAccessPanel();
+    });
+  });
+
+  container.querySelectorAll('.access-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      _accessToggleLevel(cb.dataset.id, cb.checked);
+      _renderAccessPanel();
+    });
+  });
+
+  document.getElementById('access-check-all')?.addEventListener('click', () => {
+    viewLevels.forEach(lvl => _accessToggleLevel(lvl.docId, true));
+    _renderAccessPanel();
+  });
+
+  document.getElementById('access-uncheck-all')?.addEventListener('click', () => {
+    viewLevels.forEach(lvl => _accessToggleLevel(lvl.docId, false));
+    _renderAccessPanel();
+  });
+
+  document.getElementById('access-btn-locked')?.addEventListener('click', () => {
+    _access.showLocked = true; _renderAccessPanel();
+  });
+  document.getElementById('access-btn-hidden')?.addEventListener('click', () => {
+    _access.showLocked = false; _renderAccessPanel();
+  });
+}
+
+async function _accessSave() {
+  const btn   = document.getElementById('access-save-btn');
+  const errEl = document.getElementById('access-error');
+  btn.disabled = true;
+  errEl.textContent = '';
+  try {
+    const players = _nonSupervisorProfiles();
+    await Promise.all(players.map(p => {
+      const denied = [...(_access.deniedMap[p.id] || new Set())];
+      return gameService.updateDeniedLevels(p.id, denied);
+    }));
+    if (_access.supervisorProfileId) {
+      await gameService.updateShowLockedSetting(_access.supervisorProfileId, _access.showLocked);
+    }
+    cachedProfiles = null;
+    await refreshProfilesCache();
+    if (currentProfileId) {
+      const p = (cachedProfiles || []).find(p => p.id === currentProfileId);
+      if (p) currentProfileData = p;
+    }
+    renderLevelGrid();
+    document.getElementById('access-overlay').classList.add('hidden');
+  } catch(e) {
+    console.error('[access]', e);
+    errEl.textContent = 'Erreur lors de la sauvegarde.';
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // ── Launch ────────────────────────────────────────────────────────────────────
 

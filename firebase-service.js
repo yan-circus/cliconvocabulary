@@ -97,6 +97,12 @@ window.gameService = {
   updateProfileAvatar: (profileId, avatarId) =>
     db.collection('profiles').doc(profileId).update({ avatar_id: avatarId }),
 
+  updateDeniedLevels: (profileId, deniedLevels) =>
+    db.collection('profiles').doc(profileId).update({ denied_levels: deniedLevels }),
+
+  updateShowLockedSetting: (profileId, showLocked) =>
+    db.collection('profiles').doc(profileId).update({ show_locked_levels: showLocked }),
+
   getUserAccount: async () => {
     if (!_currentUser) return null;
     const doc = await db.collection('users').doc(_currentUser.uid).get();
