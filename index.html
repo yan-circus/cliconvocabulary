@@ -11,47 +11,46 @@
 
   <!-- ══ Header ══════════════════════════════════════════════════════════════ -->
   <header class="index-header">
-    <div class="header-left">
-      <div id="mode-menu" class="mode-menu">
-        <button id="mode-menu-btn" class="mode-menu-btn">
-          <span id="mode-menu-icon">📖</span>
-          <span id="mode-menu-label">Apprentissage</span>
-          <span class="mode-menu-arrow">▾</span>
-        </button>
-        <div id="mode-dropdown" class="mode-dropdown hidden">
-          <button class="mode-entry" data-mode="learning"><span>📖</span>Apprentissage</button>
-          <button class="mode-entry" data-mode="findword"><span>👆</span>Find the word</button>
-          <button class="mode-entry" data-mode="chooseword"><span>🔤</span>Choose the word</button>
-          <button class="mode-entry" data-mode="typeword"><span>⌨</span>Type the word</button>
+    <div class="header-row">
+      <div class="header-left">
+        <div id="mode-menu" class="mode-menu">
+          <button id="mode-menu-btn" class="mode-menu-btn">
+            <span id="mode-menu-icon">📖</span>
+            <span id="mode-menu-label">Apprentissage</span>
+            <span class="mode-menu-arrow">▾</span>
+          </button>
+          <div id="mode-dropdown" class="mode-dropdown hidden">
+            <button class="mode-entry" data-mode="learning"><span>📖</span>Apprentissage</button>
+            <button class="mode-entry" data-mode="findword"><span>👆</span>Find the word</button>
+            <button class="mode-entry" data-mode="chooseword"><span>🔤</span>Choose the word</button>
+            <button class="mode-entry" data-mode="typeword"><span>⌨</span>Type the word</button>
+          </div>
         </div>
+        <button id="chrono-toggle" class="chrono-header-btn" title="Chrono">⏱</button>
       </div>
-      <button id="chrono-toggle" class="chrono-header-btn" title="Chrono">⏱</button>
-    </div>
-    <div class="header-right">
-      <button id="help-btn" class="icon-btn" title="Aide">?</button>
-      <button id="score-btn" class="icon-btn" title="Scores">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="20" x2="18" y2="10"/>
-          <line x1="12" y1="20" x2="12" y2="4"/>
-          <line x1="6"  y1="20" x2="6"  y2="14"/>
-        </svg>
-      </button>
-      <div id="user-area">
-        <button id="auth-btn" title="Mon compte">
-          <img id="auth-avatar" class="user-avatar hidden" src="" alt="Avatar">
-          <span id="auth-icon">👤</span>
-          <span id="user-display">Me connecter</span>
+      <div class="header-right">
+        <button id="help-btn" class="icon-btn" title="Aide">?</button>
+        <button id="score-btn" class="icon-btn" title="Scores">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6"  y1="20" x2="6"  y2="14"/>
+          </svg>
         </button>
-        <div id="user-dropdown" class="hidden"></div>
+        <div id="user-area">
+          <button id="auth-btn" title="Mon compte">
+            <img id="auth-avatar" class="user-avatar hidden" src="" alt="Avatar">
+            <span id="auth-icon">👤</span>
+            <span id="user-display">Me connecter</span>
+          </button>
+          <div id="user-dropdown" class="hidden"></div>
+        </div>
+        <button id="close-btn" class="icon-btn" title="Fermer">✕</button>
       </div>
-      <button id="close-btn" class="icon-btn" title="Fermer">✕</button>
     </div>
-  </header>
-
-  <!-- ══ Family tabs ═════════════════════════════════════════════════════════ -->
-  <div class="family-tabs-bar">
+    <!-- ══ Family tabs ════════════════════════════════════════════════════ -->
     <div id="family-tabs-scroll" class="family-tabs-scroll"></div>
-  </div>
+  </header>
 
   <!-- ══ Level grid ══════════════════════════════════════════════════════════ -->
   <div class="level-content">
