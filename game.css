@@ -516,18 +516,18 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   flex-shrink: 0;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 6px 10px;
-  background: rgba(0,0,0,.35);
+  background: transparent;
 }
 .type-kb-row { display: flex; gap: 4px; }
 .type-kb-key {
-  width: 40px; height: 36px;
+  width: 70px; height: 42px;
   background: rgba(255,255,255,.15); border: none; border-radius: 6px;
-  color: #fff; font-size: 15px; font-weight: 700;
+  color: #fff; font-size: 16px; font-weight: 700;
   cursor: pointer; touch-action: manipulation;
   transition: background .1s;
 }
 .type-kb-key:active { background: rgba(255,255,255,.35); }
-.type-kb-del { width: 56px; font-size: 17px; }
+.type-kb-del { width: 90px; font-size: 18px; }
 
 /* Game body */
 .game-body { flex: 1; display: flex; overflow: hidden; }
