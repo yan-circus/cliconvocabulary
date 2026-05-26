@@ -462,9 +462,13 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   line-height: 1; opacity: .8; transition: opacity .15s;
 }
 .game-stop-btn:hover { opacity: 1; }
-.game-lives-area { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.game-hud-row    { display: flex; align-items: center; gap: 6px; }
-.game-counter    { font-size: 12px; font-weight: 700; color: #a0a0c0; letter-spacing: .5px; }
+.game-lives-area { display: flex; align-items: center; gap: 6px; }
+.game-counter {
+  position: absolute; bottom: 10px; right: 12px;
+  font-size: 13px; font-weight: 700; color: #fff;
+  background: rgba(0,0,0,.45); border-radius: 6px;
+  padding: 2px 8px; pointer-events: none; z-index: 10;
+}
 .game-score { font-size: 2.5rem; font-weight: 800; color: #f0c040; }
 .game-lives { display: flex; align-items: center; gap: 2px; }
 .game-player { display: flex; align-items: center; gap: 6px; margin-left: 8px; }
