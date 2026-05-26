@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.3.6';
+const VERSION = 'v0.3.7';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -105,7 +105,13 @@ function loadImage() {
   const img = document.getElementById('game-image');
   img.addEventListener('load', () => renderCurrent());
   img.src = levelData.image_path || '';
-  window.addEventListener('resize', () => renderCurrent());
+  let _resizeRaf = null;
+  window.addEventListener('resize', () => {
+    if (_resizeRaf) cancelAnimationFrame(_resizeRaf);
+    _resizeRaf = requestAnimationFrame(() => {
+      _resizeRaf = requestAnimationFrame(() => { _resizeRaf = null; renderCurrent(); });
+    });
+  });
 }
 
 // In findword mode the active point must not be revealed before the player answers
