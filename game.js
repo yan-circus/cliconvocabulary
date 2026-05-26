@@ -708,6 +708,23 @@ function esc(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Fullscreen ────────────────────────────────────────────────────────────────
+
+(function () {
+  const btn      = document.getElementById('fullscreen-btn');
+  const expand   = document.getElementById('fs-expand');
+  const compress = document.getElementById('fs-compress');
+  function update() {
+    const fs = !!document.fullscreenElement;
+    expand.style.display   = fs ? 'none' : '';
+    compress.style.display = fs ? '' : 'none';
+  }
+  btn.addEventListener('click', () => {
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  });
+  document.addEventListener('fullscreenchange', update);
+})();
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 
 init();

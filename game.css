@@ -644,3 +644,13 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   animation: marker-correct-anim .4s ease-out;
   transform-box: fill-box; transform-origin: center;
 }
+
+/* Fullscreen button */
+.fullscreen-btn {
+  position: fixed; bottom: 14px; right: 14px; z-index: 200;
+  width: 36px; height: 36px; border-radius: 8px; border: none;
+  background: rgba(0,0,0,.45); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: .6; transition: opacity .2s;
+}
+.fullscreen-btn:hover { opacity: 1; }
