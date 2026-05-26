@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.3.5';
+const VERSION = 'v0.3.6';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
