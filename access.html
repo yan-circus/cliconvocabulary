@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Niveaux autorisés — CliConVocabulary</title>
+  <link rel="stylesheet" href="access.css">
+</head>
+<body>
+<div class="access-layout">
+
+  <header class="access-header">
+    <a href="index.html" class="access-back-btn" title="Retour">←</a>
+    <h1>🔓 Niveaux autorisés</h1>
+    <button id="save-btn" class="access-save-btn">Enregistrer</button>
+  </header>
+
+  <div class="access-family-bar" id="family-bar"></div>
+
+  <div class="access-controls" id="controls"></div>
+
+  <div class="access-table-wrap">
+    <table class="access-matrix" id="matrix">
+      <tbody><tr><td class="loading-cell">Chargement…</td></tr></tbody>
+    </table>
+  </div>
+
+  <footer class="access-footer">
+    <span class="access-footer-label">Niveaux non autorisés :</span>
+    <div class="access-toggle-btns">
+      <button class="access-toggle-btn" id="btn-locked">🔒 Verrouillé</button>
+      <button class="access-toggle-btn" id="btn-hidden">⊘ Masqué</button>
+    </div>
+    <div id="save-error" class="access-error"></div>
+    <div id="save-ok" class="access-ok hidden">✓ Enregistré</div>
+  </footer>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="game-config.js"></script>
+<script src="firebase-service.js"></script>
+<script src="access.js"></script>
+</body>
+</html>

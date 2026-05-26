@@ -207,24 +207,11 @@
       </div>
       <div id="supervisor-options" style="display:none; flex-direction:column; gap:8px">
         <button id="add-profile-btn" class="supervisor-option">➕ Ajouter un joueur</button>
-        <button id="access-btn" class="supervisor-option">🔓 Niveaux autorisés</button>
+        <a id="access-btn" href="access.html" class="supervisor-option">🔓 Niveaux autorisés</a>
         <a href="editor.html" class="supervisor-option">🖊 Éditeur de niveaux</a>
         <button id="logout-btn" class="supervisor-option supervisor-option-danger">⬅ Se déconnecter</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- ══ Access panel ══════════════════════════════════════════════════════════ -->
-<div id="access-overlay" class="panel-overlay hidden">
-  <div class="center-panel">
-    <div class="center-panel-header">
-      <h3>🔓 Niveaux autorisés</h3>
-      <button id="access-close" class="icon-btn">✕</button>
-    </div>
-    <div id="access-content" class="access-panel"></div>
-    <div id="access-error" class="error-msg"></div>
-    <button id="access-save-btn" class="btn btn-primary btn-full">Enregistrer</button>
   </div>
 </div>
 

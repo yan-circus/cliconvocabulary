@@ -1,0 +1,186 @@
+/* access.css — Niveaux autorisés (full-page supervisor panel) */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #1a1a2e; color: #e0e0e0;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────────── */
+
+.access-layout {
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+
+.access-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 20px; border-bottom: 1px solid #3a3a5e;
+  flex-shrink: 0; background: #12122a;
+}
+
+.access-header h1 { flex: 1; font-size: 18px; font-weight: 800; color: #f0c040; }
+
+.access-back-btn {
+  font-size: 22px; color: #e0e0e0; text-decoration: none;
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; transition: background .15s;
+}
+.access-back-btn:hover { background: #2a2a4e; }
+
+.access-save-btn {
+  padding: 8px 20px; border-radius: 20px; border: none;
+  background: #6c5ce7; color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.access-save-btn:hover  { background: #5a4bd1; }
+.access-save-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Family tabs ────────────────────────────────────────────────────────────── */
+
+.access-family-bar {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  padding: 10px 20px; border-bottom: 1px solid #3a3a5e;
+  flex-shrink: 0;
+}
+
+.access-family-tab {
+  padding: 4px 13px; border-radius: 12px; border: 1.5px solid #3a3a5e;
+  background: none; cursor: pointer; font-size: 12px; font-weight: 700;
+  color: #a0a0c0; transition: all .15s;
+}
+.access-family-tab.active  { background: #6c5ce7; color: #fff; border-color: #6c5ce7; }
+.access-family-tab:hover:not(.active) { background: #2a2a4e; }
+
+/* ── Controls (diff filter + bulk all) ──────────────────────────────────────── */
+
+.access-controls {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 20px; border-bottom: 1px solid #3a3a5e;
+  flex-shrink: 0;
+}
+
+.access-controls-label { font-size: 11px; color: #a0a0c0; font-weight: 700; }
+
+.access-diff-chip {
+  padding: 3px 10px; border-radius: 10px; border: 1px solid #3a3a5e;
+  background: none; cursor: pointer; font-size: 11px; font-weight: 700; color: #a0a0c0;
+  transition: all .12s;
+}
+.access-diff-chip.active  { background: #2a2a4e; color: #e0e0e0; border-color: #6060a0; }
+.access-diff-chip:hover:not(.active) { background: #22224a; }
+
+.access-controls-sep { width: 1px; height: 18px; background: #3a3a5e; margin: 0 4px; }
+
+.access-bulk-all-btn {
+  padding: 3px 10px; border-radius: 8px; border: 1px solid #3a3a5e;
+  background: #2a2a4e; color: #e0e0e0; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: background .12s;
+}
+.access-bulk-all-btn:hover { background: #35355e; }
+
+/* ── Matrix table ───────────────────────────────────────────────────────────── */
+
+.access-table-wrap {
+  flex: 1; overflow: auto;
+}
+.access-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+.access-table-wrap::-webkit-scrollbar-thumb { background: #3a3a5e; border-radius: 4px; }
+
+.access-matrix {
+  border-collapse: collapse; width: max-content; min-width: 100%;
+}
+
+/* Sticky header row */
+.access-matrix thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: #12122a; border-bottom: 2px solid #3a3a5e;
+  padding: 8px 10px; vertical-align: bottom;
+}
+
+/* Sticky first column */
+.access-matrix th:first-child,
+.access-matrix td:first-child {
+  position: sticky; left: 0; z-index: 2;
+  background: #1a1a2e; border-right: 1px solid #3a3a5e;
+}
+/* Corner: sticky both */
+.access-matrix thead th:first-child { z-index: 3; background: #12122a; }
+
+/* Row hover */
+.access-matrix tbody tr:hover td { background: #20203a; }
+.access-matrix tbody tr:hover td:first-child { background: #22224a; }
+
+/* Cells */
+.access-matrix td {
+  padding: 0; border-bottom: 1px solid #232338;
+  vertical-align: middle;
+}
+
+/* Level name cell */
+.matrix-level-cell {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; min-width: 180px; max-width: 260px;
+}
+.matrix-level-name { font-size: 13px; font-weight: 600; flex: 1; }
+.matrix-level-diff {
+  font-size: 10px; color: #a0a0c0; background: #12122a;
+  padding: 2px 6px; border-radius: 6px; font-weight: 700; flex-shrink: 0;
+}
+.matrix-row-bulk { display: flex; gap: 3px; flex-shrink: 0; }
+
+/* Player header */
+.matrix-player-th { text-align: center; min-width: 76px; padding: 6px 4px 8px !important; }
+.matrix-player-avatar {
+  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
+  display: block; margin: 0 auto 4px;
+}
+.matrix-player-name { font-size: 11px; font-weight: 700; color: #e0e0e0; }
+.matrix-col-bulk { display: flex; gap: 3px; justify-content: center; margin-top: 5px; }
+
+/* Corner cell */
+.matrix-corner-th { min-width: 180px; }
+.matrix-corner-bulk { display: flex; gap: 4px; margin-top: 6px; }
+
+/* Checkbox cell */
+.matrix-cb-cell { text-align: center; padding: 0 4px !important; }
+.matrix-cb-cell input[type=checkbox] {
+  width: 16px; height: 16px; cursor: pointer;
+  accent-color: #6c5ce7;
+}
+
+/* Bulk mini-buttons */
+.matrix-bulk-btn {
+  font-size: 10px; padding: 2px 6px; border-radius: 5px;
+  border: 1px solid #3a3a5e; background: #2a2a4e; color: #e0e0e0;
+  cursor: pointer; font-weight: 700; line-height: 1.4; transition: background .1s;
+}
+.matrix-bulk-btn:hover { background: #35355e; }
+
+.loading-cell { padding: 40px; text-align: center; color: #a0a0c0; font-size: 14px; }
+.no-player-msg { padding: 40px; text-align: center; color: #a0a0c0; font-size: 14px; }
+
+/* ── Footer ─────────────────────────────────────────────────────────────────── */
+
+.access-footer {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 20px; border-top: 1px solid #3a3a5e;
+  flex-shrink: 0; background: #12122a;
+}
+
+.access-footer-label { font-size: 12px; color: #a0a0c0; font-weight: 600; }
+
+.access-toggle-btns {
+  display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #3a3a5e;
+}
+.access-toggle-btn {
+  padding: 5px 13px; font-size: 12px; background: none; border: none;
+  cursor: pointer; color: #a0a0c0; font-weight: 600; transition: all .15s;
+}
+.access-toggle-btn.active { background: #6c5ce7; color: #fff; }
+
+.access-error { color: #e74c3c; font-size: 12px; }
+.access-ok    { color: #00b894; font-size: 12px; font-weight: 700; }
+.hidden       { display: none; }
