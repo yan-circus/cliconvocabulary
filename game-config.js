@@ -21,4 +21,12 @@ const GAME_CONFIG = {
   // 3-star threshold: score must exceed (this value × nb_questions)
   // with chrono active and 0 lives lost
   score3_per_question: 500,
+
+  // Difficulty levels (id stored as integer in levels.difficulty)
+  difficulties: [
+    { id: 1, label: 'Débutant'      },
+    { id: 2, label: 'Élémentaire'   },
+    { id: 3, label: 'Intermédiaire' },
+    { id: 4, label: 'Difficile'     },
+  ],
 };

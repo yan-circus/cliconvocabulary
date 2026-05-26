@@ -1,12 +1,14 @@
 // access.js — Supervisor level access management
 
+const DIFFICULTIES = GAME_CONFIG.difficulties;
+
 let families          = [];
 let allLevels         = [];
 let players           = [];   // non-supervisor profiles
 let supervisorId      = null;
 let showLocked        = true;
 let selectedFamilyDocId = null;
-let selectedDiff      = null;
+let selectedDiff      = null; // null = all, or difficulty id (integer)
 let deniedMap         = {};   // profileId -> Set<levelDocId>
 
 // ── Auth gate ─────────────────────────────────────────────────────────────────
@@ -78,7 +80,7 @@ function famLevels() {
 
 function viewLevels() {
   const fl = famLevels();
-  return selectedDiff ? fl.filter(l => l.notes === selectedDiff) : fl;
+  return selectedDiff !== null ? fl.filter(l => l.difficulty === selectedDiff) : fl;
 }
 
 function isAllowed(profileId, levelDocId) {
@@ -114,25 +116,25 @@ function renderFamilyTabs() {
 function renderControls() {
   const ctrl = document.getElementById('controls');
   const fl   = famLevels();
-  const diffs = [...new Set(fl.map(l => l.notes).filter(Boolean))].sort();
+  const diffs = [...new Set(fl.map(l => l.difficulty).filter(d => d != null))].sort((a, b) => a - b);
 
   let html = '';
   if (diffs.length) {
     html += `<span class="access-controls-label">Difficulté :</span>`;
-    html += `<button class="access-diff-chip${!selectedDiff ? ' active' : ''}" data-diff="">Tout</button>`;
-    diffs.forEach(d => {
-      html += `<button class="access-diff-chip${selectedDiff === d ? ' active' : ''}" data-diff="${esc(d)}">${esc(d)}</button>`;
+    html += `<button class="access-diff-chip${selectedDiff === null ? ' active' : ''}" data-diff="">Tout</button>`;
+    diffs.forEach(dId => {
+      const d = DIFFICULTIES.find(x => x.id === dId);
+      html += `<button class="access-diff-chip${selectedDiff === dId ? ' active' : ''}" data-diff="${dId}">${esc(d?.label || dId)}</button>`;
     });
-    html += `<span class="access-controls-sep"></span>`;
   }
-  html += `<button class="access-bulk-all-btn" id="bulk-all-check">✓ Tout autoriser</button>`;
+  html += `<button class="access-bulk-all-btn access-bulk-right" id="bulk-all-check">✓ Tout autoriser</button>`;
   html += `<button class="access-bulk-all-btn" id="bulk-all-uncheck">✗ Tout bloquer</button>`;
 
   ctrl.innerHTML = html;
 
   ctrl.querySelectorAll('.access-diff-chip').forEach(btn => {
     btn.addEventListener('click', () => {
-      selectedDiff = btn.dataset.diff || null;
+      selectedDiff = btn.dataset.diff ? Number(btn.dataset.diff) : null;
       renderControls();
       renderMatrix();
     });
@@ -195,7 +197,6 @@ function renderMatrix() {
       tbody += `<td>
         <div class="matrix-level-cell">
           <span class="matrix-level-name">${esc(lvl.title || lvl.name)}</span>
-          ${lvl.notes ? `<span class="matrix-level-diff">${esc(lvl.notes)}</span>` : ''}
           <div class="matrix-row-bulk">
             <button class="matrix-bulk-btn" data-action="row-check" data-lid="${esc(lvl.docId)}">✓</button>
             <button class="matrix-bulk-btn" data-action="row-uncheck" data-lid="${esc(lvl.docId)}">✗</button>

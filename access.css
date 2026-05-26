@@ -61,6 +61,8 @@ body {
   padding: 8px 20px; border-bottom: 1px solid #3a3a5e;
   flex-shrink: 0;
 }
+/* Push global bulk buttons to the right */
+.access-bulk-right { margin-left: auto; }
 
 .access-controls-label { font-size: 11px; color: #a0a0c0; font-weight: 700; }
 
@@ -97,7 +99,7 @@ body {
 .access-matrix thead th {
   position: sticky; top: 0; z-index: 1;
   background: #12122a; border-bottom: 2px solid #3a3a5e;
-  padding: 8px 10px; vertical-align: bottom;
+  padding: 8px 10px; vertical-align: bottom; /* aligns all ✓/✗ buttons to same baseline */
 }
 
 /* Sticky first column */
