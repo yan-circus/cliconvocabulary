@@ -385,7 +385,14 @@ function nextQuestion() {
   else if (MODE === 'typeword') setupTypeWord();
   else if (MODE === 'chooseword')  setupParmi3();
 
-  if (CHRONO) startChrono();
+  if (CHRONO) {
+    const img = document.getElementById('game-image');
+    if (img.complete && img.naturalWidth) {
+      startChrono();
+    } else {
+      img.addEventListener('load', () => startChrono(), { once: true });
+    }
+  }
 }
 
 // ── Clic on word ──────────────────────────────────────────────────────────────
