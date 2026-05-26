@@ -66,9 +66,9 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   background: transparent; border-bottom: none;
   position: sticky; top: 0; z-index: 30;
 }
-.header-row   { display: flex; align-items: center; gap: 10px; width: 100%; position: relative; z-index: 1; }
-.header-left  { display: flex; align-items: center; gap: 8px; }
-.header-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.header-row   { display: flex; align-items: center; gap: 10px; width: 100%; position: relative; z-index: 1; pointer-events: none; }
+.header-left  { display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+.header-right { display: flex; align-items: center; gap: 6px; margin-left: auto; pointer-events: auto; }
 
 /* Mode dropdown */
 .mode-menu { position: relative; }
