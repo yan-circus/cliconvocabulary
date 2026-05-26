@@ -427,15 +427,22 @@ function handleClicWordAnswer(clickedIdx) {
 
 // ── Type the word ─────────────────────────────────────────────────────────────
 
+const AZERTY_ROWS = [
+  ['A','Z','E','R','T','Y','U','I','O','P'],
+  ['Q','S','D','F','G','H','J','K','L','M'],
+  ['W','X','C','V','B','N','⌫'],
+];
+
 function setupTypeWord() {
   const zone   = document.getElementById('question-zone');
   zone.innerHTML = '';
 
-  const answer   = (allWords[activeIdx].en || '').trim();
-  const template = answer.split('').map(c => (/[a-zA-Z]/.test(c) ? { type: 'letter' } : { type: 'sep', char: c }));
+  const answer      = (allWords[activeIdx].en || '').trim();
+  const template    = answer.split('').map(c => (/[a-zA-Z]/.test(c) ? { type: 'letter' } : { type: 'sep', char: c }));
   const letterCount = template.filter(t => t.type === 'letter').length;
   let typed = [];
 
+  // ── Letter boxes ──────────────────────────────────────────────────────────
   const boxes = document.createElement('div');
   boxes.className = 'type-boxes';
   const cells = [];
@@ -453,7 +460,6 @@ function setupTypeWord() {
       cells.push(cell);
     }
   });
-
   zone.appendChild(boxes);
 
   function render() {
@@ -466,15 +472,15 @@ function setupTypeWord() {
   }
   render();
 
-  function handleKey(e) {
+  // ── Input handler (shared by keyboard and on-screen keys) ─────────────────
+  function pressKey(key) {
     if (locked) return;
-    if (e.key === 'Backspace') {
-      e.preventDefault();
+    if (key === '⌫') {
       if (typed.length > 0) { typed.pop(); render(); }
       return;
     }
-    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key) && typed.length < letterCount) {
-      typed.push(e.key);
+    if (typed.length < letterCount) {
+      typed.push(key);
       render();
       if (typed.length === letterCount) {
         stopChrono();
@@ -485,8 +491,33 @@ function setupTypeWord() {
     }
   }
 
+  function handleKey(e) {
+    if (e.key === 'Backspace') { e.preventDefault(); pressKey('⌫'); return; }
+    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) pressKey(e.key.toUpperCase());
+  }
   document.addEventListener('keydown', handleKey);
-  _typeCleanup = () => document.removeEventListener('keydown', handleKey);
+
+  // ── On-screen AZERTY keyboard ─────────────────────────────────────────────
+  const kb = document.createElement('div');
+  kb.className = 'type-keyboard';
+  AZERTY_ROWS.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'type-kb-row';
+    row.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'type-kb-key' + (k === '⌫' ? ' type-kb-del' : '');
+      btn.textContent = k;
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); pressKey(k); });
+      rowEl.appendChild(btn);
+    });
+    kb.appendChild(rowEl);
+  });
+  document.querySelector('.game-layout').appendChild(kb);
+
+  _typeCleanup = () => {
+    document.removeEventListener('keydown', handleKey);
+    kb.remove();
+  };
 }
 
 function handleTypeWordAnswer(answer) {
