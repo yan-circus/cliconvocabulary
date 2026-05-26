@@ -215,8 +215,35 @@
         <button id="add-profile-btn" class="supervisor-option">➕ Ajouter un joueur</button>
         <a id="access-btn" href="access.html" class="supervisor-option">🔓 Niveaux autorisés</a>
         <a href="editor.html" class="supervisor-option">🖊 Éditeur de niveaux</a>
+        <button id="settings-btn" class="supervisor-option">⚙️ Réglages</button>
         <button id="logout-btn" class="supervisor-option supervisor-option-danger">⬅ Se déconnecter</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Settings panel ═══════════════════════════════════════════════════════ -->
+<div id="settings-overlay" class="panel-overlay hidden">
+  <div class="center-panel center-panel-sm">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3>⚙️ Réglages</h3>
+        <button id="settings-close" class="icon-btn">✕</button>
+      </div>
+      <div class="settings-list">
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Afficher le classement</div>
+            <div class="settings-row-desc">Les joueurs peuvent voir les scores de tous les utilisateurs dans le panneau Scores.</div>
+          </div>
+          <label class="settings-toggle">
+            <input type="checkbox" id="setting-show-ranking">
+            <span class="settings-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <button id="settings-save-btn" class="btn btn-primary btn-full">Enregistrer</button>
+      <div id="settings-error" class="error-msg"></div>
     </div>
   </div>
 </div>

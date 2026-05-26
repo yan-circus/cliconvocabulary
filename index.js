@@ -314,6 +314,47 @@ document.getElementById('logout-btn').addEventListener('click', () => {
   gameService.signOut().catch(console.error);
 });
 
+// ── Settings panel ────────────────────────────────────────────────────────────
+
+function _supervisorProfile() {
+  return (cachedProfiles || []).find(p => p.is_supervisor) || null;
+}
+
+document.getElementById('settings-btn').addEventListener('click', () => {
+  document.getElementById('supervisor-overlay').classList.add('hidden');
+  const supervisor = _supervisorProfile();
+  document.getElementById('setting-show-ranking').checked = supervisor?.show_ranking ?? true;
+  document.getElementById('settings-error').textContent = '';
+  document.getElementById('settings-overlay').classList.remove('hidden');
+});
+document.getElementById('settings-close').addEventListener('click', () =>
+  document.getElementById('settings-overlay').classList.add('hidden')
+);
+document.getElementById('settings-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settings-overlay'))
+    document.getElementById('settings-overlay').classList.add('hidden');
+});
+document.getElementById('settings-save-btn').addEventListener('click', async () => {
+  const btn   = document.getElementById('settings-save-btn');
+  const errEl = document.getElementById('settings-error');
+  btn.disabled = true;
+  errEl.textContent = '';
+  try {
+    const supervisor = _supervisorProfile();
+    if (!supervisor) throw new Error('no supervisor');
+    const showRanking = document.getElementById('setting-show-ranking').checked;
+    await gameService.updateSupervisorSettings(supervisor.id, { show_ranking: showRanking });
+    cachedProfiles = null;
+    await refreshProfilesCache();
+    document.getElementById('settings-overlay').classList.add('hidden');
+  } catch(e) {
+    console.error('[settings]', e);
+    errEl.textContent = 'Erreur lors de la sauvegarde.';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ── Add profile modal ─────────────────────────────────────────────────────────
 
 let addProfileAvatarId = 1;
@@ -834,6 +875,11 @@ function _cellHtml(stars, points) {
 }
 
 async function openScorePanel() {
+  const showRanking = _supervisorProfile()?.show_ranking ?? true;
+  const rankingTab  = document.querySelector('.score-tab[data-tab="ranking"]');
+  if (rankingTab) rankingTab.style.display = showRanking ? '' : 'none';
+  if (!showRanking && _scorePanelTab === 'ranking') _scorePanelTab = 'mine';
+
   document.getElementById('score-overlay').classList.remove('hidden');
   document.getElementById('score-content').innerHTML = '<div class="loading-msg">Chargement…</div>';
   if (!_allLevels) _allLevels = await gameService.getAllLevels();

@@ -103,6 +103,9 @@ window.gameService = {
   updateShowLockedSetting: (profileId, showLocked) =>
     db.collection('profiles').doc(profileId).update({ show_locked_levels: showLocked }),
 
+  updateSupervisorSettings: (profileId, settings) =>
+    db.collection('profiles').doc(profileId).update(settings),
+
   getUserAccount: async () => {
     if (!_currentUser) return null;
     const doc = await db.collection('users').doc(_currentUser.uid).get();
