@@ -47,6 +47,7 @@ let gameStartTime     = 0;
 let locked            = false; // blocks input during transitions
 let chronoStart       = null;
 let chronoRaf         = null;
+let _typeCleanup      = null;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -380,6 +381,7 @@ function setupPlay() {
 }
 
 function nextQuestion() {
+  if (_typeCleanup) { _typeCleanup(); _typeCleanup = null; }
   if (lives <= 0)               { showEnd(false); return; }
   if (playPos >= playQueue.length) { showEnd(true);  return; }
 
@@ -426,28 +428,65 @@ function handleClicWordAnswer(clickedIdx) {
 // ── Type the word ─────────────────────────────────────────────────────────────
 
 function setupTypeWord() {
-  const zone = document.getElementById('question-zone');
+  const zone   = document.getElementById('question-zone');
   zone.innerHTML = '';
-  const hint = document.createElement('div');
-  hint.className = 'question-hint';
-  hint.textContent = 'Tapez le mot correspondant au point actif';
 
-  const form   = document.createElement('div');
-  form.className = 'type-form';
-  const input  = document.createElement('input');
-  input.type = 'text'; input.className = 'type-input';
-  input.placeholder = 'Type here…';
-  input.autocomplete = 'off'; input.autocorrect = 'off'; input.spellcheck = false;
-  const okBtn  = document.createElement('button');
-  okBtn.className = 'btn btn-primary'; okBtn.textContent = 'OK';
+  const answer   = (allWords[activeIdx].en || '').trim();
+  const template = answer.split('').map(c => (/[a-zA-Z]/.test(c) ? { type: 'letter' } : { type: 'sep', char: c }));
+  const letterCount = template.filter(t => t.type === 'letter').length;
+  let typed = [];
 
-  const submit = () => { stopChrono(); handleTypeWordAnswer(input.value.trim()); };
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
-  okBtn.addEventListener('click', submit);
+  const boxes = document.createElement('div');
+  boxes.className = 'type-boxes';
+  const cells = [];
 
-  form.appendChild(input); form.appendChild(okBtn);
-  zone.appendChild(hint); zone.appendChild(form);
-  setTimeout(() => input.focus(), 80);
+  template.forEach(t => {
+    if (t.type === 'sep') {
+      const sep = document.createElement('span');
+      sep.className = 'type-sep';
+      sep.textContent = t.char;
+      boxes.appendChild(sep);
+    } else {
+      const cell = document.createElement('span');
+      cell.className = 'type-cell';
+      boxes.appendChild(cell);
+      cells.push(cell);
+    }
+  });
+
+  zone.appendChild(boxes);
+
+  function render() {
+    cells.forEach((cell, i) => {
+      cell.textContent = i < typed.length ? typed[i].toUpperCase() : '';
+      cell.className = 'type-cell' +
+        (i < typed.length ? ' type-cell-filled' : '') +
+        (i === typed.length ? ' type-cell-active' : '');
+    });
+  }
+  render();
+
+  function handleKey(e) {
+    if (locked) return;
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (typed.length > 0) { typed.pop(); render(); }
+      return;
+    }
+    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key) && typed.length < letterCount) {
+      typed.push(e.key);
+      render();
+      if (typed.length === letterCount) {
+        stopChrono();
+        let li = 0;
+        const full = template.map(t => t.type === 'sep' ? t.char : typed[li++]).join('');
+        handleTypeWordAnswer(full);
+      }
+    }
+  }
+
+  document.addEventListener('keydown', handleKey);
+  _typeCleanup = () => document.removeEventListener('keydown', handleKey);
 }
 
 function handleTypeWordAnswer(answer) {
