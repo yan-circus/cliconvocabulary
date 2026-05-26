@@ -516,7 +516,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   flex-shrink: 0;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 6px 10px;
-  background: transparent;
+  background: #2d3436;
 }
 .type-kb-row { display: flex; gap: 4px; }
 .type-kb-key {
