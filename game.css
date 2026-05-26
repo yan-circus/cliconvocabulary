@@ -462,7 +462,9 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
   line-height: 1; opacity: .8; transition: opacity .15s;
 }
 .game-stop-btn:hover { opacity: 1; }
-.game-lives-area { display: flex; align-items: center; gap: 6px; }
+.game-lives-area { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.game-hud-row    { display: flex; align-items: center; gap: 6px; }
+.game-counter    { font-size: 12px; font-weight: 700; color: #a0a0c0; letter-spacing: .5px; }
 .game-score { font-size: 2.5rem; font-weight: 800; color: #f0c040; }
 .game-lives { display: flex; align-items: center; gap: 2px; }
 .game-player { display: flex; align-items: center; gap: 6px; margin-left: 8px; }

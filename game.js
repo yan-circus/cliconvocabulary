@@ -120,6 +120,12 @@ document.addEventListener('keydown', e => {
 
 // ── Lives & Score ─────────────────────────────────────────────────────────────
 
+function renderCounter() {
+  const el = document.getElementById('game-counter');
+  if (!el) return;
+  el.textContent = `${answeredCorrectly.size} / ${allWords.length}`;
+}
+
 function renderLives() {
   const zone = document.getElementById('lives-zone');
   zone.innerHTML = '';
@@ -369,6 +375,7 @@ function setupPlay() {
   answeredCorrectly = new Set();
   wrongCount        = 0;
   gameStartTime     = Date.now();
+  renderCounter();
   nextQuestion();
 }
 
@@ -502,6 +509,7 @@ function onCorrect() {
   locked = true;
   addScore(calcScore());
   answeredCorrectly.add(activeIdx);
+  renderCounter();
   showFeedback('Correct !', true);
   document.getElementById('game-svg').querySelectorAll('.marker-active-pulse').forEach(el => {
     el.classList.replace('marker-active-pulse', 'marker-correct-pulse');
