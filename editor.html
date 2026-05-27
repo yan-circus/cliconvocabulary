@@ -167,15 +167,13 @@
   </div>
 </div>
 
-<!-- ══ Level Meta screen ══════════════════════════════════════════════════════ -->
-<div class="screen" data-screen="level-meta">
-  <header class="editor-header">
-    <button id="meta-back-btn" class="btn btn-secondary">← Retour</button>
-    <h2 id="meta-title"></h2>
-    <button id="meta-save-btn" class="btn btn-success">Sauvegarder</button>
-  </header>
-  <div class="meta-body">
-    <div class="meta-form">
+<!-- ══ Level Meta panel ════════════════════════════════════════════════════════ -->
+<div id="level-meta-panel" class="level-meta-overlay" style="display:none">
+  <div class="level-meta-card">
+    <div class="level-meta-card-header">
+      <h2 id="meta-title"></h2>
+    </div>
+    <div class="level-meta-card-body">
       <div class="form-group">
         <label>Nom du niveau</label>
         <input id="meta-name" type="text" required>
@@ -190,13 +188,17 @@
       </div>
       <div class="form-group">
         <label>Notes</label>
-        <textarea id="meta-notes" rows="5" placeholder="Description, contexte, remarques…"></textarea>
+        <textarea id="meta-notes" rows="4" placeholder="Description, contexte, remarques…"></textarea>
       </div>
       <div id="meta-error" class="error-msg"></div>
+      <button id="meta-markers-btn" class="btn btn-primary btn-full" style="margin-top:8px">
+        🖊 Affectation des marqueurs →
+      </button>
     </div>
-    <button id="meta-markers-btn" class="btn btn-primary meta-markers-btn">
-      🖊 Affectation des marqueurs →
-    </button>
+    <div class="level-meta-card-footer">
+      <button id="meta-cancel-btn" class="btn btn-secondary">Annuler</button>
+      <button id="meta-save-btn" class="btn btn-success">Sauvegarder</button>
+    </div>
   </div>
 </div>
 
@@ -214,7 +216,7 @@
 </div>
 
 <!-- ══ New level modal ════════════════════════════════════════════════════════ -->
-<div id="new-level-modal" class="modal-overlay">
+<div id="new-level-modal" class="modal-overlay" style="display:none">
   <div class="modal">
     <h2>Nouveau niveau</h2>
     <form id="new-level-form">

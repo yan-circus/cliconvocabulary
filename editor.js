@@ -233,7 +233,8 @@ function openMeta(lvl) {
     diffSel.appendChild(opt);
   });
 
-  showScreen('level-meta');
+  showScreen('browser');
+  document.getElementById('level-meta-panel').style.display = 'flex';
 }
 
 async function handleSaveMeta() {
@@ -255,15 +256,19 @@ async function handleSaveMeta() {
     await editorService.updateLevelMeta(state.level.docId, updates);
     Object.assign(state.level, updates);
     if (newFam) state.selectedFamily = newFam;
-    document.getElementById('meta-title').textContent = `${state.selectedFamily?.name || ''} / ${name}`;
-    btn.textContent = '✓ Sauvegardé';
-    setTimeout(() => { btn.textContent = 'Sauvegarder'; }, 2000);
+    document.getElementById('level-meta-panel').style.display = 'none';
+    if (state.selectedFamily) {
+      state.levels = await editorService.getLevels(state.selectedFamily.id);
+      renderFamilyList();
+      document.getElementById('family-title').textContent = state.selectedFamily.name;
+      renderLevelGrid();
+    }
   } catch (err) { showErr('meta-error', err.message); }
   finally       { btn.disabled = false; }
 }
 
-async function backFromMetaToBrowser() {
-  showScreen('browser');
+async function closeMetaPanel() {
+  document.getElementById('level-meta-panel').style.display = 'none';
   if (state.selectedFamily) {
     state.levels = await editorService.getLevels(state.selectedFamily.id);
     renderLevelGrid();
@@ -961,10 +966,13 @@ document.addEventListener('DOMContentLoaded', () => {
     opt.value = d.id; opt.textContent = d.label; diffSel.appendChild(opt);
   });
 
-  // Level meta
-  document.getElementById('meta-back-btn').addEventListener('click', backFromMetaToBrowser);
+  // Level meta panel
+  document.getElementById('meta-cancel-btn').addEventListener('click', closeMetaPanel);
   document.getElementById('meta-save-btn').addEventListener('click', handleSaveMeta);
-  document.getElementById('meta-markers-btn').addEventListener('click', () => openEditorScreen(state.level));
+  document.getElementById('meta-markers-btn').addEventListener('click', () => {
+    document.getElementById('level-meta-panel').style.display = 'none';
+    openEditorScreen(state.level);
+  });
 
   // Editor
   document.getElementById('back-btn').addEventListener('click', backToMeta);
