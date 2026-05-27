@@ -120,12 +120,26 @@ function renderLevelGrid() {
     const diff = editorService.DIFFICULTIES.find(d => d.id === lvl.difficulty);
     const card = document.createElement('div');
     card.className = 'level-card';
-    const validBadge = lvl.valid === false
-      ? '<span class="level-invalid-badge">✗ invalide</span>'
-      : (lvl.valid === true ? '<span class="level-valid-badge">✓</span>' : '');
+    const wc = lvl.word_count   ?? null;
+    const mc = lvl.marker_count ?? null;
+    const ac = lvl.audio_count  ?? null;
+
+    const mIcon  = mc === wc && wc > 0 ? '✓' : mc > 0 ? '⚠' : wc > 0 ? '✕' : '—';
+    const mClass = mc === wc && wc > 0 ? 'stat-valid' : mc > 0 ? 'stat-partial' : wc > 0 ? 'stat-missing' : '';
+
+    const aStatus = lvl.audio_status || 'none';
+    const aIcon   = aStatus === 'complete' ? '✓' : aStatus === 'partial' ? '⚠' : '—';
+    const aClass  = aStatus === 'complete' ? 'stat-valid' : aStatus === 'partial' ? 'stat-partial' : '';
+
     card.innerHTML = `
-      <div class="level-card-title">${esc(lvl.title || lvl.name)} ${validBadge}</div>
+      <div class="level-card-title">${esc(lvl.title || lvl.name)}</div>
       <div class="level-card-diff">${diff ? diff.label : '—'}</div>
+      ${wc !== null ? `
+      <div class="level-card-stats">
+        <span class="level-stat">${wc} mot${wc !== 1 ? 's' : ''}</span>
+        <span class="level-stat ${mClass}">marqueurs ${mc}/${wc} ${mIcon}</span>
+        <span class="level-stat ${aClass}">audios ${ac}/${wc} ${aIcon}</span>
+      </div>` : ''}
       <div class="level-card-actions">
         <button class="btn btn-sm btn-primary">Éditer</button>
         <button class="btn btn-sm btn-danger">✕</button>
@@ -841,7 +855,10 @@ async function doSaveLevel(valid) {
       line_style:          document.getElementById('editor-line-style').value                   || 'solid',
       arrow_head:          document.getElementById('editor-arrow-head').value                   || 'filled',
       valid,
-      audio_status: audioStatus,
+      audio_status:  audioStatus,
+      word_count:    state.words.length,
+      marker_count:  state.words.filter(w => w.point).length,
+      audio_count:   state.words.filter(w => w.audio_path).length,
     });
     await editorService.saveWords(state.level.docId, state.words);
     state.level.valid = valid;

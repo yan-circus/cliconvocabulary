@@ -291,12 +291,20 @@ body {
   font-size: 11px;
   color: var(--text-muted);
 }
-.level-valid-badge   { color: #16a34a; font-size: 11px; font-weight: 700; }
-.level-invalid-badge { color: #dc2626; font-size: 11px; font-weight: 700; }
-.level-card-words {
+.level-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+}
+.level-stat {
   font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
+.level-stat.stat-valid   { color: #16a34a; }
+.level-stat.stat-partial { color: #d4a017; }
+.level-stat.stat-missing { color: #dc2626; }
 .level-card-actions {
   display: flex;
   gap: 6px;

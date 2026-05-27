@@ -14,6 +14,7 @@ const state = {
   progress:              { best_scores: {} },
 };
 let chronoEnabled = localStorage.getItem('cv-chrono') === '1';
+let audioEnabled  = localStorage.getItem('cv-audio')  !== '0';
 
 // ── Auth & Profiles ───────────────────────────────────────────────────────────
 
@@ -748,7 +749,9 @@ function renderLevelGrid() {
       ${lvl.image_path
         ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
         : `<div class="level-card-img-ph">🖼</div>`}
-      <div class="level-card-name">${esc(lvl.title || lvl.name)}</div>
+      <div class="level-card-name">
+        ${esc(lvl.title || lvl.name)}${lvl.audio_status === 'complete' ? `<span class="level-audio-icon">${ICONS.speaker}</span>` : ''}
+      </div>
       <div class="level-stars">${_levelStars(lvl)}</div>
       ${denied ? `<div class="level-lock-overlay">🔒</div>` : ''}
       ${isSelected ? `<button class="level-card-play" title="Jouer"><div class="level-card-play-icon">▶</div></button>` : ''}
@@ -848,8 +851,15 @@ document.getElementById('chrono-toggle').addEventListener('click', () => {
   document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
 });
 
+document.getElementById('audio-toggle').addEventListener('click', () => {
+  audioEnabled = !audioEnabled;
+  localStorage.setItem('cv-audio', audioEnabled ? '1' : '0');
+  document.getElementById('audio-toggle').classList.toggle('on', audioEnabled);
+});
+
 updateModeBtn();
 document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
+document.getElementById('audio-toggle').classList.toggle('on', audioEnabled);
 
 // ── Score panel ───────────────────────────────────────────────────────────────
 
