@@ -164,13 +164,15 @@ window.editorService = {
     return snap.docs.map(d => {
       const data = d.data();
       return {
-        docId:  d.id,
-        fr:     data.langs?.fr || '',
-        en:     data.langs?.en || '',
-        langs:  data.langs     || {},
-        point:  data.point     || null,
-        arrows: data.arrows    || [],
-        order:  data.order,
+        docId:      d.id,
+        fr:         data.langs?.fr   || '',
+        en:         data.langs?.en   || '',
+        langs:      data.langs       || {},
+        point:      data.point       || null,
+        arrows:     data.arrows      || [],
+        order:      data.order,
+        audio_path: data.audio_path  || '',
+        audio_name: data.audio_name  || '',
       };
     });
   },
@@ -182,13 +184,25 @@ window.editorService = {
     existing.docs.forEach(d => batch.delete(d.ref));
     words.forEach((w, i) => {
       batch.set(colRef.doc(), {
-        langs:  { fr: w.fr || '', en: w.en || '', ...(w.langs || {}) },
-        point:  w.point  || null,
-        arrows: w.arrows || [],
-        order:  i,
+        langs:      { fr: w.fr || '', en: w.en || '', ...(w.langs || {}) },
+        point:      w.point      || null,
+        arrows:     w.arrows     || [],
+        order:      i,
+        audio_path: w.audio_path || '',
+        audio_name: w.audio_name || '',
       });
     });
     await batch.commit();
+  },
+
+  // ── Audio (Firebase Storage) ─────────────────────────────────────────────
+
+  uploadAudio: async (levelDocId, file) => {
+    const ext  = file.name.split('.').pop().toLowerCase();
+    const path = `assets/audio/${levelDocId}/${Date.now()}.${ext}`;
+    const ref  = storage.ref(path);
+    await ref.put(file);
+    return await ref.getDownloadURL();
   },
 
   // ── Image (Firebase Storage) ──────────────────────────────────────────────

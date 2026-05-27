@@ -696,6 +696,31 @@ body {
 .wi-fr { color: var(--text-muted); font-style: italic; }
 .wi-en { font-weight: 600; }
 
+.wi-audio {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.wi-audio-name {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wi-audio-name.has-audio {
+  color: var(--accent);
+  font-style: normal;
+}
+.wi-audio .icon-btn {
+  font-size: 11px;
+  padding: 2px 5px;
+  flex-shrink: 0;
+}
+
 .marker-status {
   font-size: 15px;
   flex-shrink: 0;

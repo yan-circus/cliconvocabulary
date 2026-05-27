@@ -376,6 +376,14 @@ function buildWordItem(w, i) {
     <div class="word-inputs">
       <input class="wi-fr" type="text" placeholder="Français" value="${esc(w.fr || '')}">
       <input class="wi-en" type="text" placeholder="Anglais"  value="${esc(w.en || '')}">
+      <div class="wi-audio">
+        <span class="wi-audio-name${w.audio_path ? ' has-audio' : ''}">
+          ${esc(w.audio_name || (w.audio_path ? 'Audio chargé' : 'Aucun audio'))}
+        </span>
+        <button class="wi-audio-upload icon-btn" title="Charger un fichier audio">📂</button>
+        <button class="wi-audio-play icon-btn" title="Écouter l'audio"${!w.audio_path ? ' disabled' : ''}>▶</button>
+        <input class="wi-audio-input" type="file" accept="audio/*" style="display:none">
+      </div>
     </div>
     <div class="word-actions">
       <button class="icon-btn" title="Monter">↑</button>
@@ -417,6 +425,39 @@ function buildWordItem(w, i) {
   });
   item.querySelector('.wi-fr').addEventListener('input', e => { state.words[i].fr = e.target.value; markDirty(); });
   item.querySelector('.wi-en').addEventListener('input', e => { state.words[i].en = e.target.value; markDirty(); });
+
+  // Audio
+  const audioUploadBtn  = item.querySelector('.wi-audio-upload');
+  const audioPlayBtn    = item.querySelector('.wi-audio-play');
+  const audioFileInput  = item.querySelector('.wi-audio-input');
+
+  [audioUploadBtn, audioPlayBtn].forEach(b => {
+    b.addEventListener('click',     e => e.stopPropagation());
+    b.addEventListener('mousedown', e => e.stopPropagation());
+  });
+  audioUploadBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    audioFileInput.click();
+  });
+  audioFileInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    audioUploadBtn.textContent = '⏳';
+    audioUploadBtn.disabled    = true;
+    try {
+      const url = await editorService.uploadAudio(state.level.docId, file);
+      state.words[i].audio_path = url;
+      state.words[i].audio_name = file.name;
+      markDirty();
+    } catch (err) {
+      alert('Erreur upload audio : ' + err.message);
+    }
+    renderWordList();
+  });
+  audioPlayBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (state.words[i].audio_path) new Audio(state.words[i].audio_path).play();
+  });
 
   // Move / delete
   const [upBtn, downBtn, delBtn] = item.querySelectorAll('.word-actions .icon-btn');
