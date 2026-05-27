@@ -352,6 +352,7 @@ function renderWordList() {
     el?.scrollIntoView({ block: 'nearest' });
   }
   updatePlacementHint();
+  renderLevelSummary();
 }
 
 function buildWordItem(w, i) {
@@ -762,6 +763,48 @@ function onStrokeWidthChange(e) {
 
 function onAnyControlChange() { markDirty(); renderMarkers(); }
 
+// ── Level summary ─────────────────────────────────────────────────────────────
+
+function computeLevelStats() {
+  const total   = state.words.length;
+  const markers = state.words.filter(w => w.point).length;
+  const audios  = state.words.filter(w => w.audio_path).length;
+  const markersValid  = total > 0 && markers === total;
+  const audioStatus   = audios === 0 ? 'none' : audios === total ? 'complete' : 'partial';
+  return { total, markers, audios, markersValid, audioStatus };
+}
+
+function renderLevelSummary() {
+  const el = document.getElementById('level-summary');
+  if (!el) return;
+  const { total, markers, audios, markersValid, audioStatus } = computeLevelStats();
+
+  const mClass = markersValid                  ? 'valid'
+               : markers > 0                   ? 'partial'
+               : total > 0                     ? 'missing' : '';
+  const mIcon  = markersValid ? '✓' : markers > 0 ? '⚠' : total > 0 ? '✕' : '—';
+
+  const aClass = audioStatus === 'complete' ? 'valid'
+               : audioStatus === 'partial'  ? 'partial' : '';
+  const aIcon  = audioStatus === 'complete' ? '✓'
+               : audioStatus === 'partial'  ? '⚠' : '—';
+
+  el.innerHTML = `
+    <div class="summary-chip">
+      <span class="summary-label">Mots</span>
+      <span class="summary-value">${total}</span>
+    </div>
+    <div class="summary-chip${mClass ? ` summary-chip-${mClass}` : ''}">
+      <span class="summary-label">● Marqueurs</span>
+      <span class="summary-value">${markers}/${total} ${mIcon}</span>
+    </div>
+    <div class="summary-chip${aClass ? ` summary-chip-${aClass}` : ''}">
+      <span class="summary-label">🔊 Audio</span>
+      <span class="summary-value">${audios}/${total} ${aIcon}</span>
+    </div>
+  `;
+}
+
 // ── Save ──────────────────────────────────────────────────────────────────────
 
 async function saveLevel() {
@@ -783,6 +826,7 @@ async function doSaveLevel(valid) {
   document.getElementById('validation-modal').classList.add('hidden');
   const btn = document.getElementById('save-btn');
   setLoading(btn, true);
+  const { audioStatus } = computeLevelStats();
   try {
     await editorService.updateLevelMeta(state.level.docId, {
       marker_size:     parseInt(document.getElementById('editor-marker-size').value)       || 16,
@@ -797,6 +841,7 @@ async function doSaveLevel(valid) {
       line_style:          document.getElementById('editor-line-style').value                   || 'solid',
       arrow_head:          document.getElementById('editor-arrow-head').value                   || 'filled',
       valid,
+      audio_status: audioStatus,
     });
     await editorService.saveWords(state.level.docId, state.words);
     state.level.valid = valid;
