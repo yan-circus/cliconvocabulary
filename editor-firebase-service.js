@@ -246,6 +246,10 @@ window.editorService = {
       id: 12, game_id: 2, name: 'Type the word',
       notes: 'Une zone est affichée — tapez le mot correspondant',
     });
+    batch.set(db.collection('game_types').doc('13'), {
+      id: 13, game_id: 2, name: 'Listen & click',
+      notes: 'L\'audio est joué — cliquez sur la zone correspondante',
+    });
     await batch.commit();
   },
 };

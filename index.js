@@ -741,10 +741,11 @@ function renderLevelGrid() {
     return;
   }
   visible.forEach(lvl => {
-    const denied     = _isDenied(lvl);
-    const isSelected = !denied && state.selectedLevel?.docId === lvl.docId;
+    const denied      = _isDenied(lvl);
+    const noAudio     = selectedMode === 'listenclick' && lvl.audio_status !== 'complete';
+    const isSelected  = !denied && !noAudio && state.selectedLevel?.docId === lvl.docId;
     const card = document.createElement('div');
-    card.className = `level-card${isSelected ? ' selected' : ''}${denied ? ' level-locked' : ''}`;
+    card.className = `level-card${isSelected ? ' selected' : ''}${denied || noAudio ? ' level-locked' : ''}`;
     card.innerHTML = `
       ${lvl.image_path
         ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
@@ -753,10 +754,10 @@ function renderLevelGrid() {
         ${esc(lvl.title || lvl.name)}${lvl.audio_status === 'complete' ? `<span class="level-audio-icon">${ICONS.speaker}</span>` : ''}
       </div>
       <div class="level-stars">${_levelStars(lvl)}</div>
-      ${denied ? `<div class="level-lock-overlay">🔒</div>` : ''}
+      ${denied || noAudio ? `<div class="level-lock-overlay">🔒</div>` : ''}
       ${isSelected ? `<button class="level-card-play" title="Jouer"><div class="level-card-play-icon">▶</div></button>` : ''}
     `;
-    if (!denied) {
+    if (!denied && !noAudio) {
       card.addEventListener('click', () => onLevelClick(lvl));
       if (isSelected) {
         card.querySelector('.level-card-play').addEventListener('click', e => {
@@ -809,10 +810,11 @@ function updateFooter() {
 // ── Mode menu ─────────────────────────────────────────────────────────────────
 
 const MODE_META = {
-  learning: { icon: '📖', label: 'Apprentissage' },
-  findword: { icon: '👆', label: 'Find the word' },
-  typeword: { icon: '⌨',  label: 'Type the word' },
-  chooseword:   { icon: '🔤', label: 'Choose the word' },
+  learning:    { icon: '📖', label: 'Apprentissage'   },
+  findword:    { icon: '👆', label: 'Find the word'   },
+  chooseword:  { icon: '🔤', label: 'Choose the word' },
+  typeword:    { icon: '⌨',  label: 'Type the word'   },
+  listenclick: { icon: '🔊', label: 'Listen & click'  },
 };
 let selectedMode = localStorage.getItem('cv-mode') || 'learning';
 
@@ -864,9 +866,10 @@ document.getElementById('audio-toggle').classList.toggle('on', audioEnabled);
 // ── Score panel ───────────────────────────────────────────────────────────────
 
 const SCORE_MODES = [
-  { id: 'findword',   label: '👆 Find',   typeId: 1 },
-  { id: 'chooseword', label: '🔤 Choose', typeId: 2 },
-  { id: 'typeword',   label: '⌨ Type',   typeId: 3 },
+  { id: 'findword',    label: '👆 Find',    typeId: 1 },
+  { id: 'chooseword',  label: '🔤 Choose',  typeId: 2 },
+  { id: 'typeword',    label: '⌨ Type',    typeId: 3 },
+  { id: 'listenclick', label: '🔊 Listen',  typeId: 4 },
 ];
 
 let _scorePanelTab = 'mine';
@@ -992,8 +995,24 @@ document.getElementById('score-overlay').addEventListener('click', e => {
 
 // ── Launch ────────────────────────────────────────────────────────────────────
 
+function showToast(msg) {
+  const existing = document.getElementById('cv-toast');
+  if (existing) existing.remove();
+  const t = document.createElement('div');
+  t.id = 'cv-toast';
+  t.className = 'cv-toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('cv-toast-show'));
+  setTimeout(() => { t.classList.remove('cv-toast-show'); setTimeout(() => t.remove(), 300); }, 3500);
+}
+
 function launchGame(mode) {
   if (!state.selectedLevel) return;
+  if (mode === 'listenclick' && !audioEnabled) {
+    showToast('🔊 Active le son pour jouer en mode Listen & click');
+    return;
+  }
   const p = new URLSearchParams({
     level:   state.selectedLevel.docId,
     mode,

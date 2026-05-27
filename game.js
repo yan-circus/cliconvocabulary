@@ -68,6 +68,7 @@ function showStartOverlay(onStart) {
     overlay.remove();
     _audioUnlocked = true;
     onStart();
+    if (CHRONO) startChrono();
   });
 }
 
@@ -105,7 +106,7 @@ async function init() {
       setupLearning();
     } else {
       setupPlay();
-      showStartOverlay(() => { if (MODE === 'findword') playWordAudio(activeIdx); });
+      showStartOverlay(() => { if (MODE === 'findword' || MODE === 'listenclick') playWordAudio(activeIdx); });
     }
 
   } catch(err) {
@@ -139,7 +140,8 @@ function loadImage() {
 
 // In findword mode the active point must not be revealed before the player answers
 function renderCurrent() {
-  renderMarkers(MODE === 'findword' ? -1 : activeIdx);
+  const hideActive = MODE === 'findword' || MODE === 'listenclick';
+  renderMarkers(hideActive ? -1 : activeIdx);
 }
 
 document.addEventListener('keydown', e => {
@@ -311,7 +313,7 @@ function renderMarkers(highlightIdx = activeIdx, wrongIdx = -1) {
     if (isActive && !isWrong) ptG.classList.add('marker-active-pulse');
     if (isWrong)              ptG.classList.add('marker-wrong-pulse');
 
-    if (MODE === 'findword' || MODE === 'learning') {
+    if (MODE === 'findword' || MODE === 'listenclick' || MODE === 'learning') {
       ptG.classList.add('marker-clickable');
       ptG.addEventListener('click', e => { e.stopPropagation(); onMarkerClick(i); });
     }
@@ -390,7 +392,7 @@ function renderLearningList(selIdx) {
 function onMarkerClick(idx) {
   if (MODE === 'learning') {
     activeIdx = idx; renderLearningList(idx); renderMarkers(idx); _learningQuestion(idx); playWordAudio(idx);
-  } else if (MODE === 'findword') {
+  } else if (MODE === 'findword' || MODE === 'listenclick') {
     handleClicWordAnswer(idx);
   }
 }
@@ -417,11 +419,12 @@ function nextQuestion() {
   locked            = false;
   renderCurrent();
 
-  if (MODE === 'findword') setupClicWord();
-  else if (MODE === 'typeword') setupTypeWord();
+  if      (MODE === 'findword')    setupClicWord();
+  else if (MODE === 'listenclick') setupListenClick();
+  else if (MODE === 'typeword')    setupTypeWord();
   else if (MODE === 'chooseword')  setupParmi3();
 
-  if (CHRONO) {
+  if (CHRONO && _audioUnlocked) {
     const img = document.getElementById('game-image');
     if (img.complete && img.naturalWidth) {
       startChrono();
@@ -432,6 +435,18 @@ function nextQuestion() {
 }
 
 // ── Clic on word ──────────────────────────────────────────────────────────────
+
+function setupListenClick() {
+  const zone = document.getElementById('question-zone');
+  zone.innerHTML =
+    `<button class="audio-replay-btn" id="audio-replay-btn">${ICONS.speaker}</button>` +
+    `<div class="question-hint">Cliquez sur le point correspondant à ce que vous entendez</div>`;
+  document.getElementById('audio-replay-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    playWordAudio(activeIdx);
+  });
+  playWordAudio(activeIdx);
+}
 
 function setupClicWord() {
   const w = allWords[activeIdx];
