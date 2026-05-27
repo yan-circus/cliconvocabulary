@@ -131,13 +131,14 @@ window.gameService = {
     return snap.docs.map(d => {
       const data = d.data();
       return {
-        docId:  d.id,
-        fr:     data.langs?.fr || '',
-        en:     data.langs?.en || '',
-        langs:  data.langs     || {},
-        point:  data.point     || null,
-        arrows: data.arrows    || [],
-        order:  data.order,
+        docId:      d.id,
+        fr:         data.langs?.fr  || '',
+        en:         data.langs?.en  || '',
+        langs:      data.langs      || {},
+        point:      data.point      || null,
+        arrows:     data.arrows     || [],
+        order:      data.order,
+        audio_path: data.audio_path || '',
       };
     });
   },

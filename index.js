@@ -998,6 +998,7 @@ function launchGame(mode) {
     level:   state.selectedLevel.docId,
     mode,
     chrono:  chronoEnabled ? '1' : '0',
+    audio:   audioEnabled  ? '1' : '0',
     avatar:  profileAvatarId,
     player:  currentProfileData?.prenom || '',
     profile: currentProfileId || '',

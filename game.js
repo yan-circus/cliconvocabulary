@@ -8,6 +8,7 @@ const params      = new URLSearchParams(location.search);
 const LEVEL_ID    = params.get('level');
 const MODE        = params.get('mode')    || 'findword';
 const CHRONO      = params.get('chrono')  === '1';
+const AUDIO       = params.get('audio')   !== '0';
 const AVATAR      = parseInt(params.get('avatar') || '1', 10);
 const PLAYER      = params.get('player')  || '';
 const PROFILE_ID  = params.get('profile') || '';
@@ -48,6 +49,27 @@ let locked            = false; // blocks input during transitions
 let chronoStart       = null;
 let chronoRaf         = null;
 let _typeCleanup      = null;
+let _audioUnlocked    = false;
+
+// ── Audio ─────────────────────────────────────────────────────────────────────
+
+function playWordAudio(idx) {
+  if (!AUDIO || !_audioUnlocked) return;
+  const url = allWords[idx]?.audio_path;
+  if (url) new Audio(url).play().catch(() => {});
+}
+
+function showStartOverlay(onStart) {
+  const overlay = document.createElement('div');
+  overlay.id = 'start-overlay';
+  overlay.innerHTML = `<button id="start-btn">▶ Commencer</button>`;
+  document.getElementById('game-body').appendChild(overlay);
+  document.getElementById('start-btn').addEventListener('click', () => {
+    overlay.remove();
+    _audioUnlocked = true;
+    onStart();
+  });
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -73,15 +95,17 @@ async function init() {
 
     renderLives();
     setupChronoBar();
-    loadImage();
+    await loadImage();
 
     if (MODE === 'learning') {
+      _audioUnlocked = true;
       document.querySelector('.game-lives-area').style.visibility = 'hidden';
       const stopBtn = document.querySelector('.game-stop-btn');
       if (stopBtn) { stopBtn.textContent = '←'; stopBtn.title = 'Retour'; }
       setupLearning();
     } else {
       setupPlay();
+      showStartOverlay(() => { if (MODE === 'findword') playWordAudio(activeIdx); });
     }
 
   } catch(err) {
@@ -103,11 +127,14 @@ function setupChronoBar() {
 }
 
 function loadImage() {
-  const img = document.getElementById('game-image');
-  img.addEventListener('load', () => renderCurrent());
-  img.src = levelData.image_path || '';
-  new ResizeObserver(() => renderCurrent())
-    .observe(document.getElementById('game-image-area'));
+  return new Promise(resolve => {
+    const img = document.getElementById('game-image');
+    new ResizeObserver(() => renderCurrent()).observe(document.getElementById('game-image-area'));
+    if (!levelData.image_path) { renderCurrent(); resolve(); return; }
+    img.addEventListener('load',  () => { renderCurrent(); resolve(); }, { once: true });
+    img.addEventListener('error', () => resolve(), { once: true });
+    img.src = levelData.image_path;
+  });
 }
 
 // In findword mode the active point must not be revealed before the player answers
@@ -351,7 +378,7 @@ function renderLearningList(selIdx) {
     const item = document.createElement('div');
     item.className = `learn-word-item${i === selIdx ? ' active' : ''}`;
     item.innerHTML = `<div class="learn-word-en">${esc(w.en || w.fr)}</div>`;
-    item.addEventListener('click', () => { activeIdx = i; renderLearningList(i); renderMarkers(i); _learningQuestion(i); });
+    item.addEventListener('click', () => { activeIdx = i; renderLearningList(i); renderMarkers(i); _learningQuestion(i); playWordAudio(i); });
     list.appendChild(item);
   });
 
@@ -362,7 +389,7 @@ function renderLearningList(selIdx) {
 
 function onMarkerClick(idx) {
   if (MODE === 'learning') {
-    activeIdx = idx; renderLearningList(idx); renderMarkers(idx); _learningQuestion(idx);
+    activeIdx = idx; renderLearningList(idx); renderMarkers(idx); _learningQuestion(idx); playWordAudio(idx);
   } else if (MODE === 'findword') {
     handleClicWordAnswer(idx);
   }
@@ -411,6 +438,7 @@ function setupClicWord() {
   document.getElementById('question-zone').innerHTML =
     `<div class="question-word">${esc(w.en || w.fr)}</div>` +
     `<div class="question-hint">Cliquez sur le point correspondant dans l'image</div>`;
+  playWordAudio(activeIdx);
 }
 
 function handleClicWordAnswer(clickedIdx) {
@@ -550,9 +578,11 @@ function handleTypeWordAnswer(answer) {
   const w       = allWords[activeIdx];
   const correct = (w.en || '').trim().toLowerCase();
   if (answer.toLowerCase() === correct) {
+    playWordAudio(activeIdx);
     onCorrect();
   } else {
     onWrong();
+    playWordAudio(activeIdx);
     document.getElementById('question-zone').innerHTML =
       `<div class="question-hint">La bonne réponse était :</div>` +
       `<div class="question-word" style="color:var(--danger)">${esc(w.en)}</div>`;
@@ -594,8 +624,8 @@ function handleParmi3Answer(btn, chosen, correct, btns) {
     b.disabled = true;
     if (b.textContent === correct) b.classList.add('correct');
   });
-  if (chosen === correct) { btn.classList.add('correct'); onCorrect(); }
-  else                    { btn.classList.add('wrong');   onWrong();   }
+  if (chosen === correct) { btn.classList.add('correct'); playWordAudio(activeIdx); onCorrect(); }
+  else                    { btn.classList.add('wrong');   playWordAudio(activeIdx); onWrong();   }
 }
 
 // ── Correct / Wrong ───────────────────────────────────────────────────────────
