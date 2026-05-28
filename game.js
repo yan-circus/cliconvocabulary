@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.3.8';
+const VERSION = 'v0.3.9';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -50,13 +50,16 @@ let chronoStart       = null;
 let chronoRaf         = null;
 let _typeCleanup      = null;
 let _audioUnlocked    = false;
+let _currentAudio     = null;
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
 
 function playWordAudio(idx) {
   if (!AUDIO || !_audioUnlocked) return;
   const url = allWords[idx]?.audio_path;
-  if (url) new Audio(url).play().catch(() => {});
+  if (!url) return;
+  _currentAudio = new Audio(url);
+  _currentAudio.play().catch(() => {});
 }
 
 function showStartOverlay(onStart) {
@@ -68,7 +71,14 @@ function showStartOverlay(onStart) {
     overlay.remove();
     _audioUnlocked = true;
     onStart();
-    if (CHRONO) startChrono();
+    if (CHRONO) {
+      if (MODE === 'listenclick' && _currentAudio) {
+        _currentAudio.addEventListener('ended', () => startChrono(), { once: true });
+        _currentAudio.addEventListener('error', () => startChrono(), { once: true });
+      } else {
+        startChrono();
+      }
+    }
   });
 }
 
@@ -417,6 +427,7 @@ function nextQuestion() {
   activeIdx         = playQueue[playPos++];
   questionStartTime = Date.now();
   locked            = false;
+  _currentAudio     = null;
   renderCurrent();
 
   if      (MODE === 'findword')    setupClicWord();
@@ -426,10 +437,15 @@ function nextQuestion() {
 
   if (CHRONO && _audioUnlocked) {
     const img = document.getElementById('game-image');
-    if (img.complete && img.naturalWidth) {
-      startChrono();
+    const doStart = () => {
+      if (img.complete && img.naturalWidth) startChrono();
+      else img.addEventListener('load', () => startChrono(), { once: true });
+    };
+    if (MODE === 'listenclick' && _currentAudio) {
+      _currentAudio.addEventListener('ended', doStart, { once: true });
+      _currentAudio.addEventListener('error', doStart, { once: true });
     } else {
-      img.addEventListener('load', () => startChrono(), { once: true });
+      doStart();
     }
   }
 }

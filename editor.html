@@ -147,22 +147,12 @@
     <!-- Word panel -->
     <div class="word-panel">
       <div class="word-panel-header">
-        <h3>Vocabulaire</h3>
-        <span id="word-count" class="word-count"></span>
         <button id="add-word-btn" class="btn btn-primary btn-sm">＋ Ajouter</button>
-        <button id="import-btn" class="btn btn-secondary btn-sm" title="Importer depuis CSV">↓ CSV</button>
-        <button id="clear-markers-btn" class="btn btn-danger btn-sm" title="Supprimer tous les marqueurs">✕ Pts</button>
+        <button id="import-btn" class="btn btn-secondary btn-sm">Import / Export</button>
       </div>
-      <div id="import-area" class="import-area">
-        <p class="import-hint">Collez un CSV séparé par <code>;</code> (ligne 1 = en-tête) :</p>
-        <textarea id="import-textarea" spellcheck="false" placeholder="English;Français&#10;Shirt;Chemise&#10;Shoes;Chaussures"></textarea>
-        <div id="import-feedback" class="import-feedback"></div>
-        <div class="import-actions">
-          <button id="import-cancel-btn" class="btn btn-secondary btn-sm">Annuler</button>
-          <button id="import-confirm-btn" class="btn btn-primary btn-sm">Importer</button>
-        </div>
-      </div>
+      <div id="import-area"></div>
       <div id="word-list" class="word-list"></div>
+      <button id="clear-markers-btn" class="btn btn-danger btn-full btn-sm" style="margin:4px 8px;width:calc(100% - 16px)">Supprimer tous les marqueurs</button>
       <div id="level-summary" class="level-summary"></div>
     </div>
 
@@ -245,6 +235,50 @@
         <button id="create-level-btn" type="submit" class="btn btn-primary">Créer</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ══ Import / Export CSV overlay ════════════════════════════════════════════ -->
+<div id="import-overlay" class="level-meta-overlay" style="display:none">
+  <div class="import-modal-card">
+    <div class="level-meta-card-header">
+      <h2>Import / Export CSV</h2>
+    </div>
+    <div class="level-meta-card-body">
+      <textarea id="import-textarea" spellcheck="false" placeholder="Français;English&#10;rouge;red&#10;bleu;blue"></textarea>
+      <div id="import-feedback" class="import-feedback"></div>
+      <div id="import-confirm-bar" class="import-confirm-bar hidden">
+        ⚠ Modifications non appliquées —
+        <button id="import-apply-btn" class="btn btn-success btn-sm">Appliquer</button>
+        <button id="import-restore-btn" class="btn btn-secondary btn-sm">Annuler</button>
+      </div>
+      <div class="import-actions">
+        <button id="import-csv-btn"      class="btn btn-primary btn-sm">↓ Importer</button>
+        <button id="export-csv-btn"      class="btn btn-secondary btn-sm">↑ Exporter</button>
+        <button id="import-help-btn"     class="icon-btn" title="Aide format CSV">?</button>
+        <button id="import-advanced-btn" class="icon-btn" title="Options avancées">＋</button>
+      </div>
+      <div id="import-help-box" class="import-help-box hidden">
+        <p>Fichier CSV, séparateur <code>;</code>, en-tête ligne 1, sans guillemets :</p>
+        <pre class="import-example">Français;English
+rouge;red
+bleu;blue
+vert;green</pre>
+      </div>
+      <div id="import-advanced-box" class="import-advanced-box hidden">
+        <div class="import-option">
+          <span>Séparateur</span>
+          <label><input type="radio" name="csv-sep" value=";" checked> ;</label>
+          <label><input type="radio" name="csv-sep" value=","> ,</label>
+        </div>
+        <div class="import-option">
+          <label><input type="checkbox" id="csv-header" checked> Ligne d'en-tête</label>
+        </div>
+      </div>
+    </div>
+    <div class="level-meta-card-footer">
+      <button id="import-cancel-btn" class="btn btn-secondary">Fermer</button>
+    </div>
   </div>
 </div>
 

@@ -359,8 +359,6 @@ function renderWordList() {
   const list = document.getElementById('word-list');
   list.innerHTML = '';
   state.words.forEach((w, i) => list.appendChild(buildWordItem(w, i)));
-  document.getElementById('word-count').textContent =
-    `${state.words.length} mot${state.words.length !== 1 ? 's' : ''}`;
   if (state.selectedWord >= 0) {
     const el = list.querySelectorAll('.word-item')[state.selectedWord];
     el?.scrollIntoView({ block: 'nearest' });
@@ -878,44 +876,94 @@ async function backToMeta() {
   openMeta(state.level);
 }
 
-// ── Import CSV ────────────────────────────────────────────────────────────────
+// ── Import / Export CSV ───────────────────────────────────────────────────────
+
+let _csvReference = '';
+
+function csvSep()    { return document.querySelector('input[name="csv-sep"]:checked')?.value || ';'; }
+function csvHeader() { return document.getElementById('csv-header').checked; }
 
 function toggleImportArea() {
-  const area = document.getElementById('import-area');
-  const opening = !area.classList.contains('visible');
-  area.classList.toggle('visible', opening);
-  document.getElementById('import-feedback').textContent = '';
-  if (opening) { document.getElementById('import-textarea').value = ''; document.getElementById('import-textarea').focus(); }
+  const overlay = document.getElementById('import-overlay');
+  const opening = overlay.style.display === 'none';
+  if (opening) {
+    overlay.style.display = 'flex';
+    document.getElementById('import-feedback').textContent = '';
+    document.getElementById('import-confirm-bar').classList.add('hidden');
+    buildExportCsv();
+    _csvReference = document.getElementById('import-textarea').value;
+    document.getElementById('import-textarea').focus();
+  } else {
+    const current = document.getElementById('import-textarea').value;
+    if (current !== _csvReference) {
+      document.getElementById('import-confirm-bar').classList.remove('hidden');
+      document.getElementById('import-feedback').textContent = '';
+      return;
+    }
+    overlay.style.display = 'none';
+  }
+}
+
+function buildExportCsv() {
+  const sep = csvSep();
+  const lines = [];
+  if (csvHeader()) lines.push(`Français${sep}English`);
+  state.words.forEach(w => lines.push(`${w.fr || ''}${sep}${w.en || ''}`));
+  document.getElementById('import-textarea').value = lines.join('\n');
+}
+
+function handleExport() {
+  buildExportCsv();
+  _csvReference = document.getElementById('import-textarea').value;
+  document.getElementById('import-confirm-bar').classList.add('hidden');
+  const fb = document.getElementById('import-feedback');
+  fb.className = 'import-feedback';
+  fb.textContent = state.words.length ? 'CSV généré — copiez le contenu.' : 'Aucun mot à exporter.';
+}
+
+function parseCsvAndReplace() {
+  const raw = document.getElementById('import-textarea').value.trim();
+  const fb  = document.getElementById('import-feedback');
+  const sep = csvSep();
+  fb.className = 'import-feedback';
+  if (!raw) { fb.textContent = 'Zone de texte vide.'; return false; }
+
+  const lines     = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const hasHeader = csvHeader();
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+  if (dataLines.length === 0) { fb.textContent = 'Aucune donnée trouvée.'; return false; }
+
+  let enCol = 1, frCol = 0;
+  if (hasHeader && lines.length > 0) {
+    const h0 = lines[0].split(sep)[0].trim().toLowerCase();
+    const frHeaders = ['français', 'french', 'fr', 'francais'];
+    if (!frHeaders.some(h => h0.startsWith(h))) { frCol = 1; enCol = 0; }
+  }
+
+  const newWords = [];
+  dataLines.forEach(line => {
+    const cols = line.split(sep).map(c => c.trim());
+    const en = cols[enCol] || ''; const fr = cols[frCol] || '';
+    if (!en && !fr) return;
+    newWords.push({ fr, en, langs: {}, point: null, arrows: [] });
+  });
+
+  if (newWords.length === 0) { fb.classList.add('error'); fb.textContent = 'Aucun mot valide trouvé.'; return false; }
+
+  snapshot();
+  state.words = newWords;
+  markDirty(); renderWordList(); renderMarkers();
+  return newWords.length;
 }
 
 function handleImport() {
-  const raw = document.getElementById('import-textarea').value.trim();
-  const fb  = document.getElementById('import-feedback');
-  fb.className = 'import-feedback';
-  if (!raw) { fb.textContent = 'Rien à importer.'; return; }
-
-  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  if (lines.length < 2) { fb.textContent = 'Au moins 2 lignes requises (en-tête + données).'; return; }
-
-  const header     = lines[0].split(';').map(h => h.trim().toLowerCase());
-  const frHeaders  = ['français', 'french', 'fr', 'francais'];
-  let enCol = 0, frCol = 1;
-  if (frHeaders.some(h => header[0].startsWith(h))) { frCol = 0; enCol = 1; }
-
-  snapshot();
-  let added = 0;
-  lines.slice(1).forEach(line => {
-    const cols = line.split(';').map(c => c.trim());
-    const en = cols[enCol] || ''; const fr = cols[frCol] || '';
-    if (!en && !fr) return;
-    state.words.push({ fr, en, langs: {}, point: null, arrows: [] });
-    added++;
-  });
-
-  if (added === 0) { fb.classList.add('error'); fb.textContent = 'Aucun mot valide trouvé.'; return; }
-  markDirty(); renderWordList(); renderMarkers();
-  fb.textContent = `${added} mot${added > 1 ? 's' : ''} importé${added > 1 ? 's' : ''}.`;
-  setTimeout(() => document.getElementById('import-area').classList.remove('visible'), 1200);
+  const count = parseCsvAndReplace();
+  if (!count) return;
+  const fb = document.getElementById('import-feedback');
+  fb.textContent = `${count} mot${count > 1 ? 's' : ''} importé${count > 1 ? 's' : ''}.`;
+  document.getElementById('import-confirm-bar').classList.add('hidden');
+  _csvReference = document.getElementById('import-textarea').value;
+  setTimeout(() => { document.getElementById('import-overlay').style.display = 'none'; }, 1500);
 }
 
 // ── Clear all markers ─────────────────────────────────────────────────────────
@@ -1084,7 +1132,24 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('import-btn').addEventListener('click', toggleImportArea);
   document.getElementById('clear-markers-btn').addEventListener('click', clearAllMarkers);
   document.getElementById('import-cancel-btn').addEventListener('click', toggleImportArea);
-  document.getElementById('import-confirm-btn').addEventListener('click', handleImport);
+  document.getElementById('import-csv-btn').addEventListener('click', handleImport);
+  document.getElementById('export-csv-btn').addEventListener('click', handleExport);
+  document.getElementById('import-help-btn').addEventListener('click', () =>
+    document.getElementById('import-help-box').classList.toggle('hidden'));
+  document.getElementById('import-advanced-btn').addEventListener('click', () =>
+    document.getElementById('import-advanced-box').classList.toggle('hidden'));
+  document.getElementById('import-apply-btn').addEventListener('click', () => {
+    const count = parseCsvAndReplace();
+    if (!count) return;
+    _csvReference = document.getElementById('import-textarea').value;
+    document.getElementById('import-confirm-bar').classList.add('hidden');
+    document.getElementById('import-overlay').style.display = 'none';
+  });
+  document.getElementById('import-restore-btn').addEventListener('click', () => {
+    document.getElementById('import-textarea').value = _csvReference;
+    document.getElementById('import-confirm-bar').classList.add('hidden');
+    document.getElementById('import-overlay').style.display = 'none';
+  });
   document.getElementById('validation-fix-btn').addEventListener('click', () =>
     document.getElementById('validation-modal').classList.add('hidden')
   );

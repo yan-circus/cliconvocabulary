@@ -17,7 +17,7 @@ const GAME_CONFIG = {
     findword:    8,
     chooseword:  5,
     typeword:    20,
-    listenclick: 8,
+    listenclick: 5,
   },
 
   // 3-star threshold: score must exceed (this value × nb_questions)
