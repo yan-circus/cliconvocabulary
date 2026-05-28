@@ -443,7 +443,7 @@ document.getElementById('profile-save').addEventListener('click', async () => {
 
 // ── Firebase auth state ───────────────────────────────────────────────────────
 
-window.onGameAuthChanged = user => {
+window.onAuthChanged = user => {
   if (user) {
     refreshProfilesCache().then(profiles => {
       if (!profiles.length) return;

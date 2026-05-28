@@ -13,7 +13,7 @@ let deniedMap         = {};   // profileId -> Set<levelDocId>
 
 // ── Auth gate ─────────────────────────────────────────────────────────────────
 
-window.onGameAuthChanged = async (user) => {
+window.onAuthChanged = async (user) => {
   if (!user) { location.href = 'index.html'; return; }
   try {
     await init();

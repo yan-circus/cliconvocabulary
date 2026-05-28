@@ -54,7 +54,7 @@ function setLoading(btn, on) {
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
-window.onEditorAuthChanged = (user) => {
+window.onAuthChanged = (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
   loadBrowser();
 };

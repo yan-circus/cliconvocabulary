@@ -1,21 +1,9 @@
-// Requires Firebase compat SDK loaded via CDN in editor.html
-
-const firebaseConfig = {
-  apiKey:            'AIzaSyDz1xCHbgqWsmhp1H5bia8smICmjBbi3uc',
-  authDomain:        'ludoedu-fea1d.firebaseapp.com',
-  projectId:         'ludoedu-fea1d',
-  storageBucket:     'ludoedu-fea1d.firebasestorage.app',
-  messagingSenderId: '595877165459',
-  appId:             '1:595877165459:web:8e0fbd53344e3d7f899066',
-};
-
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-
-const auth    = firebase.auth();
-const db      = firebase.firestore();
-const storage = firebase.storage();
+// editor-firebase-service.js — CliConVocabulary editor service (game-specific)
+// Requires: shared/firebase-core.js, shared/platform-methods.js
+// Requires: Firebase Storage compat SDK (loaded in editor.html before this file)
 
 const GAME_ID = 2;
+const storage = firebase.storage();
 
 const DIFFICULTIES = [
   { id: 1, label: 'Débutant'      },
@@ -24,48 +12,19 @@ const DIFFICULTIES = [
   { id: 4, label: 'Difficile'     },
 ];
 
-let _currentUser = null;
-
-auth.onAuthStateChanged(user => {
-  _currentUser = user;
-  if (typeof window.onEditorAuthChanged === 'function') window.onEditorAuthChanged(user);
-});
-
 window.editorService = {
-
+  ..._platformMethods,
   DIFFICULTIES,
   GAME_ID,
 
-  getUser:   () => _currentUser,
-  signIn:    (email, pw) => auth.signInWithEmailAndPassword(email, pw),
-  signOut:   ()          => auth.signOut(),
-
-  signInWithGoogle: () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()),
-
-  getProvider: () => _currentUser?.providerData[0]?.providerId || null,
-
+  // Aliases used by editor.js (different naming than gameService)
+  getProvider:    () => _currentUser?.providerData[0]?.providerId || null,
   reauthPassword: (pw) => _currentUser.reauthenticateWithCredential(
     firebase.auth.EmailAuthProvider.credential(_currentUser.email, pw)
   ),
-
   reauthGoogle: () => _currentUser.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider()),
 
-  getUserAccount: async () => {
-    if (!_currentUser) return null;
-    const doc = await db.collection('users').doc(_currentUser.uid).get();
-    return doc.exists ? doc.data() : null;
-  },
-
   // ── Families ──────────────────────────────────────────────────────────────
-
-  getFamilies: async () => {
-    const snap = await db.collection('level_families')
-      .where('game_id', '==', GAME_ID)
-      .get();
-    return snap.docs
-      .map(d => ({ docId: d.id, ...d.data() }))
-      .sort((a, b) => a.id - b.id);
-  },
 
   createFamily: async (name) => {
     const snap   = await db.collection('level_families').orderBy('id', 'desc').limit(1).get();
@@ -73,13 +32,13 @@ window.editorService = {
     const newId  = lastId + 1;
     const now    = new Date().toISOString();
     const data   = {
-      id:     newId,
-      uuid:   `cv-fam-${newId}-${Date.now()}`,
+      id:      newId,
+      uuid:    `cv-fam-${newId}-${Date.now()}`,
       game_id: GAME_ID,
       name,
-      notes:  '',
-      date:   now,
-      author: _currentUser?.email || 'system',
+      notes:   '',
+      date:    now,
+      author:  _currentUser?.email || 'system',
     };
     await db.collection('level_families').doc(String(newId)).set(data);
     return { docId: String(newId), ...data };
@@ -99,16 +58,6 @@ window.editorService = {
   },
 
   // ── Levels ────────────────────────────────────────────────────────────────
-
-  getLevels: async (familyId) => {
-    const snap = await db.collection('levels')
-      .where('game_id', '==', GAME_ID)
-      .where('family_id', '==', Number(familyId))
-      .get();
-    return snap.docs
-      .map(d => ({ docId: d.id, ...d.data() }))
-      .sort((a, b) => a.id - b.id);
-  },
 
   createLevel: async (familyId, familyUuid, name, difficulty, notes = '') => {
     const snap   = await db.collection('levels').orderBy('id', 'desc').limit(1).get();
@@ -195,7 +144,7 @@ window.editorService = {
     await batch.commit();
   },
 
-  // ── Audio (Firebase Storage) ─────────────────────────────────────────────
+  // ── Audio (Firebase Storage) ──────────────────────────────────────────────
 
   uploadAudio: async (levelDocId, file) => {
     const ext  = file.name.split('.').pop().toLowerCase();
