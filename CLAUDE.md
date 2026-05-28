@@ -1,6 +1,6 @@
 # LudoEdu — plateforme de jeux pédagogiques
 
-Repo GitHub : `yan-circus/cliconvocabulary` (sera renommé `ludoedu` à terme).
+Repo GitHub : `yan-circus/ludoedu`.
 Firebase project : `ludoedu-fea1d` (Firestore + Auth + Storage).
 Stack : HTML/CSS/JS vanilla, pas de build system, scripts chargés via `<script>` dans l'ordre.
 
@@ -9,11 +9,10 @@ Stack : HTML/CSS/JS vanilla, pas de build system, scripts chargés via `<script>
 ```
 shared/                  ← code partagé entre tous les jeux
 cliconvocabulary/        ← premier jeu (actuellement à la racine)
-maths/                   ← deuxième jeu (à créer)
+calcnplay/               ← deuxième jeu (à créer)
 ```
 
-Les fichiers de CliConVocabulary sont pour l'instant **à la racine** (pas dans un sous-dossier).
-Les nouveaux jeux iront dans leur propre sous-dossier.
+Chaque jeu est dans son propre sous-dossier. Les fichiers partagés sont dans `shared/`.
 
 ---
 
@@ -87,9 +86,16 @@ game_types/{id}                    → types de jeu (game_id, name)
 Chaque jeu a son propre `game_id` **entier** dans `level_families` et `levels`.
 Le progress est stocké sous `progress/{game_slug}` où le slug est `GAME_CONFIG.game_id` (string).
 
+### Registre des GAME_ID
+
+| GAME_ID | Slug              | Jeu              |
+|---------|-------------------|------------------|
+| 2       | cliconvocabulary  | CliConVocabulary |
+| 3       | calcnplay         | CalcNPlay        |
+
 ---
 
-## CliConVocabulary (fichiers à la racine)
+## CliConVocabulary (dossier cliconvocabulary/)
 
 **game_id Firestore : `2` — slug progress : `'cliconvocabulary'`**
 
@@ -132,21 +138,29 @@ Auth callback : `window.onAuthChanged`.
 
 ---
 
+## CalcNPlay (dossier calcnplay/)
+
+**game_id Firestore : `3` — slug progress : `'calcnplay'`**
+
+À créer. Jeu de calcul mental.
+
+---
+
 ## Ordre de chargement des scripts (toutes pages)
 
 ```html
 <!-- 1. Firebase SDK CDN -->
-<script src="firebase-app-compat.js"></script>
-<script src="firebase-auth-compat.js"></script>
-<script src="firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <!-- Storage uniquement si nécessaire -->
 
 <!-- 2. Config jeu (définit GAME_CONFIG) -->
-<script src="game-config.js"></script>   <!-- ou ../maths/game-config.js -->
+<script src="game-config.js"></script>
 
 <!-- 3. Shared (dans cet ordre) -->
-<script src="shared/firebase-core.js"></script>      <!-- définit auth, db, _currentUser -->
-<script src="shared/platform-methods.js"></script>   <!-- définit _platformMethods -->
+<script src="../shared/firebase-core.js"></script>    <!-- définit auth, db, _currentUser -->
+<script src="../shared/platform-methods.js"></script> <!-- définit _platformMethods -->
 
 <!-- 4. Service spécifique au jeu (définit GAME_ID, window.gameService) -->
 <script src="firebase-service.js"></script>
