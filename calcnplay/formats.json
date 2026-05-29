@@ -1,0 +1,37 @@
+[
+  {
+    "id": "default",
+    "label": "a ○ b = ? (résultat inconnu)",
+    "template": "{op1} {op} {op2} = {?}",
+    "placeholder_display": "?",
+    "answer_key": "result"
+  },
+  {
+    "id": "find_op2_q",
+    "label": "a ○ ? = résultat (2e terme inconnu)",
+    "template": "{op1} {op} {?} = {result}",
+    "placeholder_display": "?",
+    "answer_key": "op2"
+  },
+  {
+    "id": "find_op1_q",
+    "label": "? ○ b = résultat (1er terme inconnu)",
+    "template": "{?} {op} {op2} = {result}",
+    "placeholder_display": "?",
+    "answer_key": "op1"
+  },
+  {
+    "id": "find_op2_dots",
+    "label": "a ○ ... = résultat (2e terme inconnu, style ...)",
+    "template": "{op1} {op} {?} = {result}",
+    "placeholder_display": "...",
+    "answer_key": "op2"
+  },
+  {
+    "id": "find_op1_dots",
+    "label": "... ○ b = résultat (1er terme inconnu, style ...)",
+    "template": "{?} {op} {op2} = {result}",
+    "placeholder_display": "...",
+    "answer_key": "op1"
+  }
+]

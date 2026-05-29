@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="icon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CalcNPlay — Éditeur</title>
+  <link rel="stylesheet" href="../shared/editor_manager.css">
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+
+<div class="cnp-layout">
+
+  <!-- ══ Header ════════════════════════════════════════════════════════════════ -->
+  <header class="cnp-header">
+    <button id="back-btn" class="btn btn-secondary">←</button>
+    <h2 id="editor-title"></h2>
+    <button id="save-btn" class="btn btn-success">Sauvegarder</button>
+  </header>
+
+  <!-- ══ Body ══════════════════════════════════════════════════════════════════ -->
+  <div class="cnp-body">
+
+    <!-- ── Settings (left) ─────────────────────────────────────────────────── -->
+    <div class="settings-col">
+
+      <!-- Mode toggle -->
+      <div class="mode-toggle">
+        <button id="mode-computed-btn" class="mode-btn active" data-mode="computed">Calculé par ordi</button>
+        <button id="mode-list-btn"     class="mode-btn"        data-mode="list">Liste prédéfinie</button>
+      </div>
+
+      <!-- ── Mode calculé ──────────────────────────────────────────────────── -->
+      <div id="computed-settings">
+
+        <!-- Opérande a -->
+        <div class="operand-section">
+          <div class="section-title">Opérande a</div>
+          <div class="operand-row">
+            <label>Min</label>
+            <input id="a-min" type="number" min="0" step="1" value="1" class="num-input">
+            <label>Max</label>
+            <input id="a-max" type="number" min="0" step="1" value="10" class="num-input">
+          </div>
+          <div class="operand-row">
+            <label>Coef</label>
+            <select id="a-coef-select" class="coef-select">
+              <option value="0.1">0,1</option>
+              <option value="1" selected>1</option>
+              <option value="10">10</option>
+              <option value="100">100</option>
+              <option value="1000">1000</option>
+              <option value="custom">Autre…</option>
+            </select>
+            <input id="a-coef-custom" type="number" min="0.001" step="any" class="num-input coef-custom" style="display:none" placeholder="ex: 25">
+          </div>
+        </div>
+
+        <!-- Opérande b -->
+        <div class="operand-section">
+          <div class="section-title">Opérande b</div>
+          <div class="operand-row">
+            <label>Min</label>
+            <input id="b-min" type="number" min="0" step="1" value="1" class="num-input">
+            <label>Max</label>
+            <input id="b-max" type="number" min="0" step="1" value="10" class="num-input">
+          </div>
+          <div class="operand-row">
+            <label>Coef</label>
+            <select id="b-coef-select" class="coef-select">
+              <option value="0.1">0,1</option>
+              <option value="1" selected>1</option>
+              <option value="10">10</option>
+              <option value="100">100</option>
+              <option value="1000">1000</option>
+              <option value="custom">Autre…</option>
+            </select>
+            <input id="b-coef-custom" type="number" min="0.001" step="any" class="num-input coef-custom" style="display:none" placeholder="ex: 25">
+          </div>
+        </div>
+
+        <!-- Opérateurs -->
+        <div class="operand-section">
+          <div class="section-title">Opérateurs</div>
+          <div class="operators-grid">
+            <label class="op-check"><input type="checkbox" id="op-+" value="+"> +</label>
+            <label class="op-check"><input type="checkbox" id="op--" value="-"> −</label>
+            <label class="op-check"><input type="checkbox" id="op-*" value="*"> ×</label>
+            <label class="op-check"><input type="checkbox" id="op-/" value="/"> ÷</label>
+          </div>
+        </div>
+
+        <!-- Résultat -->
+        <div class="operand-section">
+          <div class="section-title">Contrainte résultat <span class="section-hint">(optionnel)</span></div>
+          <div class="operand-row">
+            <label>Min</label>
+            <input id="result-min" type="number" step="any" class="num-input" placeholder="—">
+            <label>Max</label>
+            <input id="result-max" type="number" step="any" class="num-input" placeholder="—">
+          </div>
+        </div>
+
+        <!-- Formatage -->
+        <div class="operand-section">
+          <div class="section-title">Formatage question</div>
+          <select id="format-select" class="format-select"></select>
+          <div id="formula-preview" class="formula-preview"></div>
+        </div>
+
+      </div><!-- /#computed-settings -->
+
+      <!-- ── Mode liste ─────────────────────────────────────────────────────── -->
+      <div id="list-settings" style="display:none">
+        <div class="list-header">
+          <button id="add-question-btn" class="btn btn-primary btn-sm">＋ Ajouter</button>
+          <span class="list-hint">Le calcul doit être correct (aucune vérification automatique).</span>
+        </div>
+        <table class="questions-table">
+          <thead>
+            <tr><th>Question</th><th>Réponse</th><th></th></tr>
+          </thead>
+          <tbody id="questions-tbody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /.settings-col -->
+
+    <!-- ── Preview (right) ─────────────────────────────────────────────────── -->
+    <div class="preview-col">
+
+      <!-- Exemples -->
+      <div class="examples-section">
+        <div class="examples-header">
+          <span class="examples-title">Exemples générés</span>
+          <select id="example-count-select" class="count-select">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <button id="regenerate-btn" class="btn btn-secondary btn-sm" title="Régénérer">↺</button>
+        </div>
+        <div id="example-list" class="example-list"></div>
+      </div>
+
+      <!-- Test -->
+      <div class="test-section">
+        <div class="test-header">
+          <span class="examples-title">Test</span>
+          <button id="test-reset-btn" class="btn btn-secondary btn-sm" title="Nouvelle question">↺</button>
+        </div>
+        <div id="test-question" class="test-question"></div>
+        <div id="test-feedback" class="test-feedback"></div>
+      </div>
+
+    </div><!-- /.preview-col -->
+
+  </div><!-- /.cnp-body -->
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="../shared/firebase-core.js"></script>
+<script src="../shared/platform-methods.js"></script>
+<script src="../shared/editor-platform-methods.js"></script>
+<script src="editor-firebase-service.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
