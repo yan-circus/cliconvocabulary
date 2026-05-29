@@ -1,9 +1,10 @@
-// editor-firebase-service.js — CliConVocabulary editor service (game-specific)
-// Requires: shared/firebase-core.js, shared/platform-methods.js
+// editor-firebase-service.js — CliConVocabulary editor service
+// Requires: shared/firebase-core.js, shared/platform-methods.js, shared/editor-platform-methods.js
 // Requires: Firebase Storage compat SDK (loaded in editor.html before this file)
 
 const GAME_ID = 2;
-const storage = firebase.storage();
+// Storage initialisé à la demande (pas chargé dans editor_manager.html)
+const _storage = () => firebase.storage();
 
 const DIFFICULTIES = [
   { id: 1, label: 'Débutant'      },
@@ -14,10 +15,12 @@ const DIFFICULTIES = [
 
 window.editorService = {
   ..._platformMethods,
+  ..._editorPlatformMethods,
   DIFFICULTIES,
   GAME_ID,
+  GAME_NAME: 'CliConVocabulary',
 
-  // Aliases used by editor.js (different naming than gameService)
+  // Aliases auth
   getProvider:    () => _currentUser?.providerData[0]?.providerId || null,
   reauthPassword: (pw) => _currentUser.reauthenticateWithCredential(
     firebase.auth.EmailAuthProvider.credential(_currentUser.email, pw)
@@ -27,11 +30,9 @@ window.editorService = {
   // ── Families ──────────────────────────────────────────────────────────────
 
   createFamily: async (name) => {
-    const snap   = await db.collection('level_families').orderBy('id', 'desc').limit(1).get();
-    const lastId = snap.empty ? 9 : Math.max(9, snap.docs[0].data().id ?? 9);
-    const newId  = lastId + 1;
-    const now    = new Date().toISOString();
-    const data   = {
+    const newId = await _editorNextFamilyId();
+    const now   = new Date().toISOString();
+    const data  = {
       id:      newId,
       uuid:    `cv-fam-${newId}-${Date.now()}`,
       game_id: GAME_ID,
@@ -60,11 +61,9 @@ window.editorService = {
   // ── Levels ────────────────────────────────────────────────────────────────
 
   createLevel: async (familyId, familyUuid, name, difficulty, notes = '') => {
-    const snap   = await db.collection('levels').orderBy('id', 'desc').limit(1).get();
-    const lastId = snap.empty ? 100 : Math.max(100, snap.docs[0].data().id ?? 100);
-    const newId  = lastId + 1;
-    const now    = new Date().toISOString();
-    const data   = {
+    const newId = await _editorNextLevelId();
+    const now   = new Date().toISOString();
+    const data  = {
       id:                  newId,
       uuid:                `cv-lvl-${newId}-${Date.now()}`,
       game_id:             GAME_ID,
@@ -92,9 +91,6 @@ window.editorService = {
     await db.collection('levels').doc(String(newId)).set(data);
     return { docId: String(newId), ...data };
   },
-
-  updateLevelMeta: (levelDocId, fields) =>
-    db.collection('levels').doc(String(levelDocId)).update(fields),
 
   deleteLevel: async (levelDocId) => {
     const ref   = db.collection('levels').doc(String(levelDocId));
@@ -149,7 +145,7 @@ window.editorService = {
   uploadAudio: async (levelDocId, file) => {
     const ext  = file.name.split('.').pop().toLowerCase();
     const path = `assets/audio/${levelDocId}/${Date.now()}.${ext}`;
-    const ref  = storage.ref(path);
+    const ref  = _storage().ref(path);
     await ref.put(file);
     return await ref.getDownloadURL();
   },
@@ -159,7 +155,7 @@ window.editorService = {
   uploadImage: async (levelDocId, file) => {
     const ext  = file.name.split('.').pop().toLowerCase();
     const path = `assets/lists/${levelDocId}.${ext}`;
-    const ref  = storage.ref(path);
+    const ref  = _storage().ref(path);
     await ref.put(file);
     const url = await ref.getDownloadURL();
     await db.collection('levels').doc(String(levelDocId)).update({ image_path: url });
@@ -168,7 +164,7 @@ window.editorService = {
 
   deleteImage: async (levelDocId, imageUrl) => {
     if (!imageUrl) return;
-    try { await storage.refFromURL(imageUrl).delete(); } catch (_) {}
+    try { await _storage().refFromURL(imageUrl).delete(); } catch (_) {}
     await db.collection('levels').doc(String(levelDocId)).update({ image_path: '' });
   },
 

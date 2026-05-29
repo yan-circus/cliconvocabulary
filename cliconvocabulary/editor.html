@@ -5,39 +5,13 @@
   <link rel="icon" type="image/png" href="icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CliConVocabulary — Éditeur</title>
+  <link rel="stylesheet" href="../shared/editor_manager.css">
   <link rel="stylesheet" href="editor.css">
 </head>
 <body>
 
-<!-- ══ Browser ════════════════════════════════════════════════════════════════ -->
-<div class="screen" data-screen="browser">
-  <header class="browser-header">
-    <a href="index.html" class="btn btn-secondary">← Accueil</a>
-    <h1>CliConVocabulary — Éditeur de niveaux</h1>
-    <button id="logout-btn" class="btn btn-secondary">Déconnexion</button>
-  </header>
-  <div class="browser-body">
-
-    <aside class="family-sidebar">
-      <div class="sidebar-header">
-        <span>Familles</span>
-        <button id="add-family-btn" class="icon-btn" title="Nouvelle famille">＋</button>
-      </div>
-      <div id="family-list" class="family-list"></div>
-    </aside>
-
-    <section class="level-area">
-      <div class="level-area-header">
-        <h2 id="family-title">Sélectionnez une famille</h2>
-      </div>
-      <div id="level-grid" class="level-grid"></div>
-    </section>
-
-  </div>
-</div>
-
 <!-- ══ Editor ═════════════════════════════════════════════════════════════════ -->
-<div class="screen" data-screen="editor">
+<div class="editor-layout">
   <header class="editor-header">
     <button id="back-btn" class="btn btn-secondary">← Retour</button>
     <h2 id="editor-title"></h2>
@@ -109,7 +83,7 @@
           <span id="marker-opacity-value">100 %</span>
         </div>
 
-        <button id="sel-color-btn" class="btn btn-secondary btn-sm" title="Personnaliser les couleurs de sélection">Couleur sél.</button>
+        <button id="sel-color-btn" class="btn btn-secondary btn-sm">Couleur sél.</button>
 
         <div class="control-group">
           <label>Trait</label>
@@ -126,6 +100,7 @@
             <option value="point">Point</option>
           </select>
         </div>
+
         <div class="control-group">
           <button id="grid-btn" class="btn btn-secondary btn-sm">Grille</button>
           <select id="grid-step-select">
@@ -159,82 +134,16 @@
   </div>
 </div>
 
-<!-- ══ Level Meta panel ════════════════════════════════════════════════════════ -->
-<div id="level-meta-panel" class="level-meta-overlay" style="display:none">
-  <div class="level-meta-card">
-    <div class="level-meta-card-header">
-      <h2 id="meta-title"></h2>
-    </div>
-    <div class="level-meta-card-body">
-      <div class="form-group">
-        <label>Nom du niveau</label>
-        <input id="meta-name" type="text" required>
-      </div>
-      <div class="form-group">
-        <label>Famille</label>
-        <select id="meta-family"></select>
-      </div>
-      <div class="form-group">
-        <label>Difficulté</label>
-        <select id="meta-diff"></select>
-      </div>
-      <div class="form-group">
-        <label>Notes</label>
-        <textarea id="meta-notes" rows="4" placeholder="Description, contexte, remarques…"></textarea>
-      </div>
-      <div id="meta-error" class="error-msg"></div>
-      <button id="meta-markers-btn" class="btn btn-primary btn-full" style="margin-top:8px">
-        🖊 Configurer les mots et marqueurs →
-      </button>
-    </div>
-    <div class="level-meta-card-footer">
-      <button id="meta-cancel-btn" class="btn btn-secondary">Annuler</button>
-      <button id="meta-save-btn" class="btn btn-success">Sauvegarder</button>
-    </div>
-  </div>
-</div>
-
 <!-- ══ Validation modal ═══════════════════════════════════════════════════════ -->
 <div id="validation-modal" class="modal-overlay hidden">
   <div class="modal">
     <h2>⚠ Niveau non valide</h2>
     <p id="validation-msg" style="margin-bottom:8px"></p>
     <p style="font-size:13px;color:var(--text-muted)">Tous les mots doivent avoir un marqueur pour que le niveau soit visible dans le jeu.</p>
-    <div class="modal-actions" style="margin-top:16px">
+    <div class="modal-actions">
       <button id="validation-fix-btn" class="btn btn-primary">Corriger</button>
       <button id="validation-save-anyway-btn" class="btn btn-secondary">Sauvegarder quand même</button>
     </div>
-  </div>
-</div>
-
-<!-- ══ New level modal ════════════════════════════════════════════════════════ -->
-<div id="new-level-modal" class="modal-overlay" style="display:none">
-  <div class="modal">
-    <h2>Nouveau niveau</h2>
-    <form id="new-level-form">
-      <div class="form-group">
-        <label>Nom du niveau</label>
-        <input id="new-level-name" type="text" placeholder="ex : Les vêtements" required>
-      </div>
-      <div class="form-group">
-        <label>Difficulté</label>
-        <select id="new-level-diff"></select>
-      </div>
-      <div class="form-group">
-        <label>Notes (optionnel)</label>
-        <textarea id="new-level-notes" rows="3" placeholder="Description, contexte…"></textarea>
-      </div>
-      <div class="form-group">
-        <label>Image (JPG / PNG / WEBP)</label>
-        <input id="new-level-image" type="file" accept="image/jpeg,image/png,image/webp" required>
-        <img id="new-level-preview" alt="Aperçu">
-      </div>
-      <div id="modal-error" class="error-msg"></div>
-      <div class="modal-actions">
-        <button id="cancel-modal-btn" type="button" class="btn btn-secondary">Annuler</button>
-        <button id="create-level-btn" type="submit" class="btn btn-primary">Créer</button>
-      </div>
-    </form>
   </div>
 </div>
 
@@ -289,6 +198,7 @@ vert;green</pre>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="../shared/firebase-core.js"></script>
 <script src="../shared/platform-methods.js"></script>
+<script src="../shared/editor-platform-methods.js"></script>
 <script src="editor-firebase-service.js"></script>
 <script src="editor.js"></script>
 </body>

@@ -1,6 +1,6 @@
-// editor.js — CliConVocabulary Level Editor
+// editor.js — CliConVocabulary Level Editor (contenu)
 
-// ── State ────────────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 
 const undoStack = [];
 const UNDO_MAX  = 20;
@@ -8,38 +8,27 @@ const UNDO_MAX  = 20;
 const drag = {
   active:      false,
   started:     false,
-  type:        null,    // 'point' | 'arrow'
+  type:        null,
   wordIdx:     -1,
   arrowIdx:    -1,
   startX:      0,
   startY:      0,
-  justDragged: false,   // true from drag-end until next mousedown, suppresses click handlers
+  justDragged: false,
 };
 
 const state = {
-  screen:           'auth',
   gridEnabled:      false,
   gridStep:         2.5,
   selColorOverride: false,
-  families:       [],
-  selectedFamily: null,
-  levels:         [],
-  level:          null,
-  words:          [],
-  selectedWord:   -1,
-  editMode:       null,   // 'point' | 'arrow' | null
-  selectedArrow:  -1,     // index of selected arrow tip within selectedWord
-  isDirty:        false,
+  level:            null,
+  words:            [],
+  selectedWord:     -1,
+  editMode:         null,
+  selectedArrow:    -1,
+  isDirty:          false,
 };
 
-// ── Screen management ────────────────────────────────────────────────────────
-
-function showScreen(name) {
-  state.screen = name;
-  document.querySelectorAll('.screen').forEach(el =>
-    el.classList.toggle('active', el.dataset.screen === name)
-  );
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function showModal(id)  { document.getElementById(id).style.display = 'flex'; }
 function hideModal(id)  { document.getElementById(id).style.display = 'none'; }
@@ -52,279 +41,64 @@ function setLoading(btn, on) {
   else     { btn.textContent = btn.dataset.txt || btn.textContent; }
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────────
 
-window.onAuthChanged = (user) => {
-  if (!user) { window.location.href = 'index.html'; return; }
-  loadBrowser();
+window.onAuthChanged = user => {
+  if (!user) { location.href = '../shared/editor_manager.html?game=cliconvocabulary'; return; }
+  const levelDocId = new URLSearchParams(location.search).get('level');
+  if (!levelDocId) { location.href = '../shared/editor_manager.html?game=cliconvocabulary'; return; }
+  loadLevel(levelDocId);
 };
 
-async function handleLogout() {
-  if (state.isDirty && !confirm('Des modifications non sauvegardées seront perdues. Continuer ?')) return;
-  await editorService.signOut();
-}
+// ── Load level ────────────────────────────────────────────────────────────────
 
-// ── Browser ───────────────────────────────────────────────────────────────────
-
-async function loadBrowser() {
-  showScreen('browser');
-  await editorService.seedVocabularyGame();
-  await refreshFamilies();
-}
-
-async function refreshFamilies() {
-  state.families = await editorService.getFamilies();
-  renderFamilyList();
-  if (state.families.length === 0) {
-    state.selectedFamily = null;
-    document.getElementById('family-title').textContent = 'Aucune famille — créez-en une';
-    state.levels = [];
-    renderLevelGrid();
-    return;
-  }
-  const current = state.selectedFamily
-    ? (state.families.find(f => f.docId === state.selectedFamily.docId) || state.families[0])
-    : state.families[0];
-  await selectFamily(current);
-}
-
-function renderFamilyList() {
-  const container = document.getElementById('family-list');
-  container.innerHTML = '';
-  state.families.forEach(fam => {
-    const active = state.selectedFamily?.docId === fam.docId;
-    const item   = document.createElement('div');
-    item.className = `family-item${active ? ' active' : ''}`;
-    item.innerHTML = `
-      <span class="family-name">${esc(fam.name)}</span>
-      <button class="icon-btn danger" title="Supprimer" data-fid="${fam.docId}">✕</button>
-    `;
-    item.addEventListener('click', e => { if (e.target.dataset.fid) return; selectFamily(fam); });
-    item.querySelector('[data-fid]').addEventListener('click', () => confirmDeleteFamily(fam));
-    container.appendChild(item);
-  });
-}
-
-async function selectFamily(fam) {
-  state.selectedFamily = fam;
-  renderFamilyList();
-  document.getElementById('family-title').textContent = fam.name;
-  state.levels = await editorService.getLevels(fam.id);
-  renderLevelGrid();
-}
-
-function renderLevelGrid() {
-  const grid = document.getElementById('level-grid');
-  grid.innerHTML = '';
-  state.levels.forEach(lvl => {
-    const diff = editorService.DIFFICULTIES.find(d => d.id === lvl.difficulty);
-    const card = document.createElement('div');
-    card.className = 'level-card';
-    const wc = lvl.word_count   ?? null;
-    const mc = lvl.marker_count ?? null;
-    const ac = lvl.audio_count  ?? null;
-
-    const mIcon  = mc === wc && wc > 0 ? '✓' : mc > 0 ? '⚠' : wc > 0 ? '✕' : '—';
-    const mClass = mc === wc && wc > 0 ? 'stat-valid' : mc > 0 ? 'stat-partial' : wc > 0 ? 'stat-missing' : '';
-
-    const aStatus = lvl.audio_status || 'none';
-    const aIcon   = aStatus === 'complete' ? '✓' : aStatus === 'partial' ? '⚠' : '—';
-    const aClass  = aStatus === 'complete' ? 'stat-valid' : aStatus === 'partial' ? 'stat-partial' : '';
-
-    card.innerHTML = `
-      <div class="level-card-title">${esc(lvl.title || lvl.name)}</div>
-      <div class="level-card-diff">${diff ? diff.label : '—'}</div>
-      ${wc !== null ? `
-      <div class="level-card-stats">
-        <span class="level-stat">${wc} mot${wc !== 1 ? 's' : ''}</span>
-        <span class="level-stat ${mClass}">marqueurs ${mc}/${wc} ${mIcon}</span>
-        <span class="level-stat ${aClass}">audios ${ac}/${wc} ${aIcon}</span>
-      </div>` : ''}
-      <div class="level-card-actions">
-        <button class="btn btn-sm btn-primary">Éditer</button>
-        <button class="btn btn-sm btn-danger">✕</button>
-      </div>
-    `;
-    card.querySelectorAll('.btn')[0].addEventListener('click', () => openMeta(lvl));
-    card.querySelectorAll('.btn')[1].addEventListener('click', () => confirmDeleteLevel(lvl));
-    grid.appendChild(card);
-  });
-  const newCard = document.createElement('div');
-  newCard.className = 'level-card level-card-new';
-  newCard.textContent = '+ Nouveau niveau';
-  newCard.addEventListener('click', openNewLevelModal);
-  grid.appendChild(newCard);
-}
-
-async function confirmDeleteFamily(fam) {
-  if (!confirm(`Supprimer la famille "${fam.name}" et tous ses niveaux ?`)) return;
-  if (state.selectedFamily?.docId === fam.docId) state.selectedFamily = null;
-  await editorService.deleteFamily(fam.docId);
-  await refreshFamilies();
-}
-
-async function confirmDeleteLevel(lvl) {
-  if (!confirm(`Supprimer le niveau "${lvl.title || lvl.name}" ?`)) return;
-  if (lvl.image_path) await editorService.deleteImage(lvl.docId, lvl.image_path);
-  await editorService.deleteLevel(lvl.docId);
-  state.levels = await editorService.getLevels(state.selectedFamily.id);
-  renderLevelGrid();
-}
-
-// ── New level modal ───────────────────────────────────────────────────────────
-
-function openNewLevelModal() {
-  if (!state.selectedFamily) { alert('Sélectionnez d\'abord une famille.'); return; }
-  document.getElementById('new-level-name').value  = '';
-  document.getElementById('new-level-diff').value  = '1';
-  document.getElementById('new-level-notes').value = '';
-  document.getElementById('new-level-image').value = '';
-  const preview = document.getElementById('new-level-preview');
-  if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
-  preview.style.display = 'none';
-  showErr('modal-error', '');
-  showModal('new-level-modal');
-  document.getElementById('new-level-name').focus();
-}
-
-function handleImagePreview(e) {
-  const file    = e.target.files[0];
-  if (!file) return;
-  const preview = document.getElementById('new-level-preview');
-  if (preview.src.startsWith('blob:')) URL.revokeObjectURL(preview.src);
-  preview.src   = URL.createObjectURL(file);
-  preview.style.display = 'block';
-}
-
-async function handleCreateLevel(e) {
-  e.preventDefault();
-  const name  = document.getElementById('new-level-name').value.trim();
-  const diff  = parseInt(document.getElementById('new-level-diff').value);
-  const notes = document.getElementById('new-level-notes').value.trim();
-  const file  = document.getElementById('new-level-image').files[0];
-  if (!name) { showErr('modal-error', 'Le nom est obligatoire.'); return; }
-  if (!file) { showErr('modal-error', 'L\'image est obligatoire.'); return; }
-  const btn = document.getElementById('create-level-btn');
-  setLoading(btn, true);
-  try {
-    const lvl = await editorService.createLevel(state.selectedFamily.id, state.selectedFamily.uuid, name, diff, notes);
-    await editorService.uploadImage(lvl.docId, file);
-    hideModal('new-level-modal');
-    state.levels = await editorService.getLevels(state.selectedFamily.id);
-    const full = state.levels.find(l => l.docId === lvl.docId);
-    if (full) openEditorScreen(full); else renderLevelGrid();
-  } catch (err) { showErr('modal-error', err.message); }
-  finally       { setLoading(btn, false); }
-}
-
-// ── Level Meta ────────────────────────────────────────────────────────────────
-
-function openMeta(lvl) {
-  state.level = lvl;
-
-  document.getElementById('meta-title').textContent = `${state.selectedFamily?.name || ''} / ${lvl.title || lvl.name}`;
-  document.getElementById('meta-name').value  = lvl.title || lvl.name || '';
-  document.getElementById('meta-notes').value = lvl.notes || '';
-  showErr('meta-error', '');
-
-  const famSel = document.getElementById('meta-family');
-  famSel.innerHTML = '';
-  state.families.forEach(f => {
-    const opt = document.createElement('option');
-    opt.value = f.docId;
-    opt.textContent = f.name;
-    if (f.docId === (state.selectedFamily?.docId || '')) opt.selected = true;
-    famSel.appendChild(opt);
-  });
-
-  const diffSel = document.getElementById('meta-diff');
-  diffSel.innerHTML = '';
-  editorService.DIFFICULTIES.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.id;
-    opt.textContent = d.label;
-    if (d.id === lvl.difficulty) opt.selected = true;
-    diffSel.appendChild(opt);
-  });
-
-  showScreen('browser');
-  document.getElementById('level-meta-panel').style.display = 'flex';
-}
-
-async function handleSaveMeta() {
-  const btn   = document.getElementById('meta-save-btn');
-  const name  = document.getElementById('meta-name').value.trim();
-  if (!name) { showErr('meta-error', 'Le nom est obligatoire.'); return; }
-  const famDocId = document.getElementById('meta-family').value;
-  const diff     = parseInt(document.getElementById('meta-diff').value);
-  const notes    = document.getElementById('meta-notes').value;
-  const newFam   = state.families.find(f => f.docId === famDocId);
-
-  setLoading(btn, true);
-  try {
-    const updates = { name, title: name, difficulty: diff, notes };
-    if (newFam && Number(newFam.id) !== Number(state.level.family_id)) {
-      updates.family_id   = Number(newFam.id);
-      updates.family_uuid = newFam.uuid;
-    }
-    await editorService.updateLevelMeta(state.level.docId, updates);
-    Object.assign(state.level, updates);
-    if (newFam) state.selectedFamily = newFam;
-    document.getElementById('level-meta-panel').style.display = 'none';
-    if (state.selectedFamily) {
-      state.levels = await editorService.getLevels(state.selectedFamily.id);
-      renderFamilyList();
-      document.getElementById('family-title').textContent = state.selectedFamily.name;
-      renderLevelGrid();
-    }
-  } catch (err) { showErr('meta-error', err.message); }
-  finally       { btn.disabled = false; }
-}
-
-async function closeMetaPanel() {
-  document.getElementById('level-meta-panel').style.display = 'none';
-  if (state.selectedFamily) {
-    state.levels = await editorService.getLevels(state.selectedFamily.id);
-    renderLevelGrid();
-  }
-}
-
-// ── Editor ────────────────────────────────────────────────────────────────────
-
-async function openEditorScreen(lvl) {
-  state.level         = lvl;
+async function loadLevel(levelDocId) {
   state.words         = [];
   state.selectedWord  = -1;
   state.editMode      = null;
   state.selectedArrow = -1;
   state.isDirty       = false;
   document.getElementById('image-area').classList.remove('can-place-point', 'can-place-arrow');
-  document.getElementById('style-select').value = '';
 
-  document.getElementById('editor-title').textContent                     = `${state.selectedFamily?.name || ''} / ${lvl.title || lvl.name}`;
-  document.getElementById('editor-marker-size').value                     = lvl.marker_size          || 16;
-  document.getElementById('marker-size-value').textContent                = `${lvl.marker_size || 16} px`;
-  document.getElementById('editor-arrow-size').value                      = lvl.arrow_size           || 10;
-  document.getElementById('arrow-size-value').textContent                 = `${lvl.arrow_size || 10} px`;
-  document.getElementById('editor-marker-opacity').value                  = lvl.marker_opacity       ?? 100;
-  document.getElementById('marker-opacity-value').textContent             = `${lvl.marker_opacity ?? 100} %`;
-  document.getElementById('editor-selected-fill').value                   = lvl.selected_fill        || '#ffffff';
-  document.getElementById('editor-selected-stroke').value                 = lvl.selected_stroke      || '#6c5ce7';
-  state.selColorOverride = !!lvl.sel_color_override;
-  document.querySelector('.image-controls').classList.toggle('sel-color-active', state.selColorOverride);
-  document.getElementById('sel-color-btn').classList.toggle('active', state.selColorOverride);
-  document.getElementById('editor-marker-color').value                    = lvl.marker_color        || '#000000';
-  document.getElementById('editor-marker-stroke-color').value             = lvl.marker_stroke_color || '#ffffff';
-  document.getElementById('editor-marker-stroke-width').value             = lvl.marker_stroke_width || 2;
-  document.getElementById('editor-stroke-width-value').textContent        = `${lvl.marker_stroke_width || 2} px`;
-  document.getElementById('editor-line-style').value                      = lvl.line_style          || 'solid';
-  document.getElementById('editor-arrow-head').value                      = lvl.arrow_head          || 'filled';
+  try {
+    state.level = await editorService.getLevelById(levelDocId);
+    if (!state.level) {
+      alert('Niveau introuvable.');
+      location.href = '../shared/editor_manager.html?game=cliconvocabulary';
+      return;
+    }
 
-  showScreen('editor');
-  loadEditorImage(lvl.image_path);
-  state.words = await editorService.getWords(lvl.docId);
-  renderWordList();
-  renderMarkers();
+    document.title = (state.level.title || state.level.name) + ' — CliConVocabulary Éditeur';
+    document.getElementById('editor-title').textContent = state.level.title || state.level.name;
+
+    document.getElementById('editor-marker-size').value                     = state.level.marker_size          || 16;
+    document.getElementById('marker-size-value').textContent                = `${state.level.marker_size || 16} px`;
+    document.getElementById('editor-arrow-size').value                      = state.level.arrow_size           || 10;
+    document.getElementById('arrow-size-value').textContent                 = `${state.level.arrow_size || 10} px`;
+    document.getElementById('editor-marker-opacity').value                  = state.level.marker_opacity       ?? 100;
+    document.getElementById('marker-opacity-value').textContent             = `${state.level.marker_opacity ?? 100} %`;
+    document.getElementById('editor-selected-fill').value                   = state.level.selected_fill        || '#ffffff';
+    document.getElementById('editor-selected-stroke').value                 = state.level.selected_stroke      || '#6c5ce7';
+    state.selColorOverride = !!state.level.sel_color_override;
+    document.querySelector('.image-controls').classList.toggle('sel-color-active', state.selColorOverride);
+    document.getElementById('sel-color-btn').classList.toggle('active', state.selColorOverride);
+    document.getElementById('editor-marker-color').value                    = state.level.marker_color        || '#000000';
+    document.getElementById('editor-marker-stroke-color').value             = state.level.marker_stroke_color || '#ffffff';
+    document.getElementById('editor-marker-stroke-width').value             = state.level.marker_stroke_width || 2;
+    document.getElementById('editor-stroke-width-value').textContent        = `${state.level.marker_stroke_width || 2} px`;
+    document.getElementById('editor-line-style').value                      = state.level.line_style          || 'solid';
+    document.getElementById('editor-arrow-head').value                      = state.level.arrow_head          || 'filled';
+
+    document.getElementById('style-select').value = '';
+    loadEditorImage(state.level.image_path);
+    state.words = await editorService.getWords(levelDocId);
+    renderWordList();
+    renderMarkers();
+    renderStyleSelect();
+  } catch (err) {
+    alert('Erreur de chargement : ' + err.message);
+    location.href = '../shared/editor_manager.html?game=cliconvocabulary';
+  }
 }
 
 function loadEditorImage(url) {
@@ -351,6 +125,14 @@ async function handleReplaceImage(e) {
     loadEditorImage(url);
   } catch (err) { alert('Erreur upload : ' + err.message); }
   finally       { setLoading(btn, false); }
+}
+
+// ── Back ──────────────────────────────────────────────────────────────────────
+
+function backToMeta() {
+  if (state.isDirty && !confirm('Des modifications non sauvegardées seront perdues. Continuer ?')) return;
+  state.isDirty = false;
+  history.back();
 }
 
 // ── Word list ─────────────────────────────────────────────────────────────────
@@ -405,7 +187,6 @@ function buildWordItem(w, i) {
     </div>
   `;
 
-  // Sélection du mot (clic sur l'item hors boutons)
   item.addEventListener('click', () => {
     state.selectedWord  = i;
     state.editMode      = null;
@@ -414,7 +195,6 @@ function buildWordItem(w, i) {
     renderWordList(); renderMarkers(); updatePlacementHint();
   });
 
-  // Mode buttons
   item.querySelector('[data-mode="point"]').addEventListener('click', e => {
     e.stopPropagation(); activateMode(i, 'point');
   });
@@ -422,7 +202,6 @@ function buildWordItem(w, i) {
     e.stopPropagation(); if (hasPoint) activateMode(i, 'arrow');
   });
 
-  // Delete selected arrow
   item.querySelector('.del-arrow-btn')?.addEventListener('click', e => {
     e.stopPropagation();
     snapshot();
@@ -431,7 +210,6 @@ function buildWordItem(w, i) {
     markDirty(); renderWordList(); renderMarkers();
   });
 
-  // Inputs — stopPropagation pour éviter que le clic remonte au handler word-item et déclenche un re-render
   ['.wi-fr', '.wi-en'].forEach(sel => {
     item.querySelector(sel).addEventListener('click',     e => e.stopPropagation());
     item.querySelector(sel).addEventListener('mousedown', e => e.stopPropagation());
@@ -439,19 +217,15 @@ function buildWordItem(w, i) {
   item.querySelector('.wi-fr').addEventListener('input', e => { state.words[i].fr = e.target.value; markDirty(); });
   item.querySelector('.wi-en').addEventListener('input', e => { state.words[i].en = e.target.value; markDirty(); });
 
-  // Audio
-  const audioUploadBtn  = item.querySelector('.wi-audio-upload');
-  const audioPlayBtn    = item.querySelector('.wi-audio-play');
-  const audioFileInput  = item.querySelector('.wi-audio-input');
+  const audioUploadBtn = item.querySelector('.wi-audio-upload');
+  const audioPlayBtn   = item.querySelector('.wi-audio-play');
+  const audioFileInput = item.querySelector('.wi-audio-input');
 
   [audioUploadBtn, audioPlayBtn].forEach(b => {
     b.addEventListener('click',     e => e.stopPropagation());
     b.addEventListener('mousedown', e => e.stopPropagation());
   });
-  audioUploadBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    audioFileInput.click();
-  });
+  audioUploadBtn.addEventListener('click', e => { e.stopPropagation(); audioFileInput.click(); });
   audioFileInput.addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -462,9 +236,7 @@ function buildWordItem(w, i) {
       state.words[i].audio_path = url;
       state.words[i].audio_name = file.name;
       markDirty();
-    } catch (err) {
-      alert('Erreur upload audio : ' + err.message);
-    }
+    } catch (err) { alert('Erreur upload audio : ' + err.message); }
     renderWordList();
   });
   audioPlayBtn.addEventListener('click', e => {
@@ -472,7 +244,6 @@ function buildWordItem(w, i) {
     if (state.words[i].audio_path) new Audio(state.words[i].audio_path).play();
   });
 
-  // Move / delete
   const [upBtn, downBtn, delBtn] = item.querySelectorAll('.word-actions .icon-btn');
   upBtn.addEventListener('click', e => {
     e.stopPropagation();
@@ -553,8 +324,8 @@ function getImageDisplayRect() {
   const nR    = img.naturalWidth / img.naturalHeight;
   const cR    = cRect.width / cRect.height;
   let dW, dH, oX, oY;
-  if (nR > cR) { dW = cRect.width;  dH = cRect.width / nR;   oX = 0;                         oY = (cRect.height - dH) / 2; }
-  else         { dH = cRect.height; dW = cRect.height * nR;  oY = 0;                         oX = (cRect.width  - dW) / 2; }
+  if (nR > cR) { dW = cRect.width;  dH = cRect.width / nR;   oX = 0;                        oY = (cRect.height - dH) / 2; }
+  else         { dH = cRect.height; dW = cRect.height * nR;  oY = 0;                        oX = (cRect.width  - dW) / 2; }
   return { x: oX, y: oY, width: dW, height: dH };
 }
 
@@ -578,8 +349,8 @@ function renderMarkers() {
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
   const opacity   = (parseInt(document.getElementById('editor-marker-opacity').value) || 100) / 100;
-  const selFill   = document.getElementById('editor-selected-fill').value               || '#ffffff';
-  const selStroke = document.getElementById('editor-selected-stroke').value             || '#6c5ce7';
+  const selFill   = document.getElementById('editor-selected-fill').value   || '#ffffff';
+  const selStroke = document.getElementById('editor-selected-stroke').value || '#6c5ce7';
 
   if (state.gridEnabled) {
     for (let p = 0; p <= 100; p += state.gridStep) {
@@ -598,13 +369,13 @@ function renderMarkers() {
     }
   }
 
-  const size   = parseInt(document.getElementById('editor-marker-size').value) || 16;
-  const aSize  = parseInt(document.getElementById('editor-arrow-size').value)  || 10;
-  const color  = document.getElementById('editor-marker-color').value         || '#000000';
-  const sColor  = document.getElementById('editor-marker-stroke-color').value          || '#ffffff';
-  const sWidth  = parseInt(document.getElementById('editor-marker-stroke-width').value)|| 2;
-  const lStyle  = document.getElementById('editor-line-style').value                   || 'solid';
-  const aHead   = document.getElementById('editor-arrow-head').value                   || 'filled';
+  const size   = parseInt(document.getElementById('editor-marker-size').value)         || 16;
+  const aSize  = parseInt(document.getElementById('editor-arrow-size').value)           || 10;
+  const color  = document.getElementById('editor-marker-color').value                  || '#000000';
+  const sColor = document.getElementById('editor-marker-stroke-color').value           || '#ffffff';
+  const sWidth = parseInt(document.getElementById('editor-marker-stroke-width').value) || 2;
+  const lStyle = document.getElementById('editor-line-style').value                    || 'solid';
+  const aHead  = document.getElementById('editor-arrow-head').value                    || 'filled';
 
   state.words.forEach((w, i) => {
     if (!w.point) return;
@@ -617,14 +388,13 @@ function renderMarkers() {
 
     const { px, py } = toSvgPos(w.point, imgRect);
 
-    // ── Arrows (behind point) ────────────────────────────────────────────────
+    // Arrows
     (w.arrows || []).forEach((a, ai) => {
       const { px: ax, py: ay } = toSvgPos(a, imgRect);
       const isSelArrow = isSel && ai === state.selectedArrow;
       const aFill   = isSelArrow ? selStroke : pFill;
       const aStroke = isSelArrow ? selFill   : pStroke;
 
-      // Line
       const line = mkSvg('line');
       line.setAttribute('x1', px); line.setAttribute('y1', py);
       line.setAttribute('x2', ax); line.setAttribute('y2', ay);
@@ -634,7 +404,6 @@ function renderMarkers() {
       line.setAttribute('stroke-linecap', 'round');
       wG.appendChild(line);
 
-      // Arrowhead (filled mode only)
       if (aHead === 'filled') {
         const angle = Math.atan2(ay - py, ax - px);
         const hLen  = aSize * 0.8;
@@ -649,7 +418,6 @@ function renderMarkers() {
         wG.appendChild(poly);
       }
 
-      // Arrow tip dot (point mode = always visible; filled mode = visible only when selected)
       const tipG = mkSvg('g'); tipG.style.cursor = 'pointer';
       const tipC = mkSvg('circle');
       tipC.setAttribute('cx', ax); tipC.setAttribute('cy', ay);
@@ -678,7 +446,7 @@ function renderMarkers() {
       wG.appendChild(tipG);
     });
 
-    // ── Point (on top) ───────────────────────────────────────────────────────
+    // Point
     const ptG = mkSvg('g'); ptG.style.cursor = 'pointer';
     const ptC = mkSvg('circle');
     ptC.setAttribute('cx', px); ptC.setAttribute('cy', py);
@@ -722,14 +490,12 @@ function handleImageAreaClick(e) {
   const cx    = e.clientX - cRect.left;
   const cy    = e.clientY - cRect.top;
 
-  // Click outside image bounds → deselect
   if (cx < imgRect.x || cx > imgRect.x + imgRect.width ||
       cy < imgRect.y || cy > imgRect.y + imgRect.height) {
     if (state.selectedWord >= 0) deselect();
     return;
   }
 
-  // No active placement tool → click on empty area deselects
   if (state.selectedWord < 0 || !state.editMode) { deselect(); return; }
 
   const pctX = snapToGrid(Math.round(((cx - imgRect.x) / imgRect.width)  * 1000) / 10);
@@ -744,10 +510,10 @@ function handleImageAreaClick(e) {
     w.arrows.push({ x: pctX, y: pctY });
   }
   markDirty();
-  deselect(); // auto-deactivate tool; deselect handles rendering
+  deselect();
 }
 
-// ── Global marker controls ────────────────────────────────────────────────────
+// ── Marker controls ───────────────────────────────────────────────────────────
 
 function onSizeChange(e) {
   document.getElementById('marker-size-value').textContent = `${e.target.value} px`;
@@ -781,8 +547,8 @@ function computeLevelStats() {
   const total   = state.words.length;
   const markers = state.words.filter(w => w.point).length;
   const audios  = state.words.filter(w => w.audio_path).length;
-  const markersValid  = total > 0 && markers === total;
-  const audioStatus   = audios === 0 ? 'none' : audios === total ? 'complete' : 'partial';
+  const markersValid = total > 0 && markers === total;
+  const audioStatus  = audios === 0 ? 'none' : audios === total ? 'complete' : 'partial';
   return { total, markers, audios, markersValid, audioStatus };
 }
 
@@ -791,15 +557,10 @@ function renderLevelSummary() {
   if (!el) return;
   const { total, markers, audios, markersValid, audioStatus } = computeLevelStats();
 
-  const mClass = markersValid                  ? 'valid'
-               : markers > 0                   ? 'partial'
-               : total > 0                     ? 'missing' : '';
+  const mClass = markersValid ? 'valid' : markers > 0 ? 'partial' : total > 0 ? 'missing' : '';
   const mIcon  = markersValid ? '✓' : markers > 0 ? '⚠' : total > 0 ? '✕' : '—';
-
-  const aClass = audioStatus === 'complete' ? 'valid'
-               : audioStatus === 'partial'  ? 'partial' : '';
-  const aIcon  = audioStatus === 'complete' ? '✓'
-               : audioStatus === 'partial'  ? '⚠' : '—';
+  const aClass = audioStatus === 'complete' ? 'valid' : audioStatus === 'partial' ? 'partial' : '';
+  const aIcon  = audioStatus === 'complete' ? '✓' : audioStatus === 'partial' ? '⚠' : '—';
 
   el.innerHTML = `
     <div class="summary-chip">
@@ -841,17 +602,17 @@ async function doSaveLevel(valid) {
   const { audioStatus } = computeLevelStats();
   try {
     await editorService.updateLevelMeta(state.level.docId, {
-      marker_size:     parseInt(document.getElementById('editor-marker-size').value)       || 16,
-      arrow_size:      parseInt(document.getElementById('editor-arrow-size').value)        || 10,
-      marker_opacity:  parseInt(document.getElementById('editor-marker-opacity').value)    ?? 100,
-      selected_fill:      document.getElementById('editor-selected-fill').value            || '#ffffff',
-      selected_stroke:    document.getElementById('editor-selected-stroke').value          || '#6c5ce7',
-      sel_color_override: state.selColorOverride,
-      marker_color:        document.getElementById('editor-marker-color').value                 || '#000000',
-      marker_stroke_color: document.getElementById('editor-marker-stroke-color').value          || '#ffffff',
-      marker_stroke_width: parseInt(document.getElementById('editor-marker-stroke-width').value)|| 2,
-      line_style:          document.getElementById('editor-line-style').value                   || 'solid',
-      arrow_head:          document.getElementById('editor-arrow-head').value                   || 'filled',
+      marker_size:         parseInt(document.getElementById('editor-marker-size').value)         || 16,
+      arrow_size:          parseInt(document.getElementById('editor-arrow-size').value)          || 10,
+      marker_opacity:      parseInt(document.getElementById('editor-marker-opacity').value)      ?? 100,
+      selected_fill:       document.getElementById('editor-selected-fill').value                 || '#ffffff',
+      selected_stroke:     document.getElementById('editor-selected-stroke').value               || '#6c5ce7',
+      sel_color_override:  state.selColorOverride,
+      marker_color:        document.getElementById('editor-marker-color').value                  || '#000000',
+      marker_stroke_color: document.getElementById('editor-marker-stroke-color').value           || '#ffffff',
+      marker_stroke_width: parseInt(document.getElementById('editor-marker-stroke-width').value) || 2,
+      line_style:          document.getElementById('editor-line-style').value                    || 'solid',
+      arrow_head:          document.getElementById('editor-arrow-head').value                    || 'filled',
       valid,
       audio_status:  audioStatus,
       word_count:    state.words.length,
@@ -865,15 +626,6 @@ async function doSaveLevel(valid) {
     setTimeout(() => { btn.textContent = 'Sauvegarder'; }, 2500);
   } catch (err) { alert('Erreur lors de la sauvegarde : ' + err.message); }
   finally       { btn.disabled = false; }
-}
-
-// ── Back ──────────────────────────────────────────────────────────────────────
-
-async function backToMeta() {
-  if (state.isDirty && !confirm('Des modifications non sauvegardées seront perdues. Continuer ?')) return;
-  state.isDirty = false; state.selectedWord = -1; state.editMode = null; state.selectedArrow = -1;
-  document.getElementById('image-area').classList.remove('can-place-point', 'can-place-arrow');
-  openMeta(state.level);
 }
 
 // ── Import / Export CSV ───────────────────────────────────────────────────────
@@ -905,7 +657,7 @@ function toggleImportArea() {
 }
 
 function buildExportCsv() {
-  const sep = csvSep();
+  const sep   = csvSep();
   const lines = [];
   if (csvHeader()) lines.push(`Français${sep}English`);
   state.words.forEach(w => lines.push(`${w.fr || ''}${sep}${w.en || ''}`));
@@ -936,8 +688,7 @@ function parseCsvAndReplace() {
   let enCol = 1, frCol = 0;
   if (hasHeader && lines.length > 0) {
     const h0 = lines[0].split(sep)[0].trim().toLowerCase();
-    const frHeaders = ['français', 'french', 'fr', 'francais'];
-    if (!frHeaders.some(h => h0.startsWith(h))) { frCol = 1; enCol = 0; }
+    if (!['français','french','fr','francais'].some(h => h0.startsWith(h))) { frCol = 1; enCol = 0; }
   }
 
   const newWords = [];
@@ -966,8 +717,6 @@ function handleImport() {
   setTimeout(() => { document.getElementById('import-overlay').style.display = 'none'; }, 1500);
 }
 
-// ── Clear all markers ─────────────────────────────────────────────────────────
-
 function clearAllMarkers() {
   const count = state.words.filter(w => w.point).length;
   if (count === 0) return;
@@ -982,13 +731,9 @@ function clearAllMarkers() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function lightenColor(hex, factor = 0.55) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const lr = Math.round(r + (255 - r) * factor);
-  const lg = Math.round(g + (255 - g) * factor);
-  const lb = Math.round(b + (255 - b) * factor);
-  return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`;
+  const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+  const lr = Math.round(r+(255-r)*factor), lg = Math.round(g+(255-g)*factor), lb = Math.round(b+(255-b)*factor);
+  return `#${lr.toString(16).padStart(2,'0')}${lg.toString(16).padStart(2,'0')}${lb.toString(16).padStart(2,'0')}`;
 }
 
 function markDirty() { state.isDirty = true; }
@@ -1020,13 +765,9 @@ function undo() {
 const STYLES_KEY = 'cv-marker-styles';
 
 function getStyles() {
-  try { return JSON.parse(localStorage.getItem(STYLES_KEY)) || []; }
-  catch { return []; }
+  try { return JSON.parse(localStorage.getItem(STYLES_KEY)) || []; } catch { return []; }
 }
-
-function saveStylesLS(styles) {
-  localStorage.setItem(STYLES_KEY, JSON.stringify(styles));
-}
+function saveStylesLS(styles) { localStorage.setItem(STYLES_KEY, JSON.stringify(styles)); }
 
 function currentStyleSettings() {
   return {
@@ -1042,7 +783,7 @@ function currentStyleSettings() {
 }
 
 function renderStyleSelect() {
-  const sel = document.getElementById('style-select');
+  const sel  = document.getElementById('style-select');
   const prev = sel.value;
   sel.innerHTML = '<option value="">— rappeler —</option>';
   getStyles().forEach(s => {
@@ -1088,44 +829,9 @@ function handleDeleteStyle() {
   renderStyleSelect();
 }
 
-function handleStyleSelect(e) {
-  const style = getStyles().find(s => s.name === e.target.value);
-  if (style) applyStyle(style);
-}
-
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Init event listeners ──────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-
-  // Browser
-  document.getElementById('logout-btn').addEventListener('click', handleLogout);
-  document.getElementById('add-family-btn').addEventListener('click', async () => {
-    const name = prompt('Nom de la nouvelle famille :');
-    if (!name?.trim()) return;
-    const fam = await editorService.createFamily(name.trim());
-    state.selectedFamily = fam;
-    await refreshFamilies();
-  });
-
-  // New level modal
-  document.getElementById('new-level-image').addEventListener('change', handleImagePreview);
-  document.getElementById('new-level-form').addEventListener('submit', handleCreateLevel);
-  document.getElementById('cancel-modal-btn').addEventListener('click', () => hideModal('new-level-modal'));
-  const diffSel = document.getElementById('new-level-diff');
-  editorService.DIFFICULTIES.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.id; opt.textContent = d.label; diffSel.appendChild(opt);
-  });
-
-  // Level meta panel
-  document.getElementById('meta-cancel-btn').addEventListener('click', closeMetaPanel);
-  document.getElementById('meta-save-btn').addEventListener('click', handleSaveMeta);
-  document.getElementById('meta-markers-btn').addEventListener('click', () => {
-    document.getElementById('level-meta-panel').style.display = 'none';
-    openEditorScreen(state.level);
-  });
-
-  // Editor
   document.getElementById('back-btn').addEventListener('click', backToMeta);
   document.getElementById('save-btn').addEventListener('click', saveLevel);
   document.getElementById('add-word-btn').addEventListener('click', addWord);
@@ -1159,7 +865,6 @@ document.addEventListener('DOMContentLoaded', () => {
   );
   document.getElementById('replace-image-input').addEventListener('change', handleReplaceImage);
 
-  // Grid
   document.getElementById('grid-btn').addEventListener('click', () => {
     state.gridEnabled = !state.gridEnabled;
     document.getElementById('grid-btn').classList.toggle('active', state.gridEnabled);
@@ -1170,13 +875,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.gridEnabled) renderMarkers();
   });
 
-  // Styles
   renderStyleSelect();
-  document.getElementById('style-select').addEventListener('change', handleStyleSelect);
+  document.getElementById('style-select').addEventListener('change', e => {
+    const style = getStyles().find(s => s.name === e.target.value);
+    if (style) applyStyle(style);
+  });
   document.getElementById('save-style-btn').addEventListener('click', handleSaveStyle);
   document.getElementById('delete-style-btn').addEventListener('click', handleDeleteStyle);
 
-  // Marker controls
   document.getElementById('editor-marker-size').addEventListener('input', onSizeChange);
   document.getElementById('editor-arrow-size').addEventListener('input', onArrowSizeChange);
   document.getElementById('editor-marker-opacity').addEventListener('input', onOpacityChange);
@@ -1191,17 +897,14 @@ document.addEventListener('DOMContentLoaded', () => {
   ['editor-marker-color','editor-marker-stroke-color','editor-selected-fill','editor-selected-stroke','editor-line-style','editor-arrow-head']
     .forEach(id => document.getElementById(id).addEventListener('input', onAnyControlChange));
 
-  // Image click
   document.getElementById('image-area').addEventListener('click', handleImageAreaClick);
   document.getElementById('editor-image').addEventListener('load', renderMarkers);
-  window.addEventListener('resize', () => { if (state.screen === 'editor') renderMarkers(); });
+  window.addEventListener('resize', renderMarkers);
 
-  // Drag — reset justDragged at the start of every new interaction
   document.addEventListener('mousedown', () => { drag.justDragged = false; });
 
-  // Drag — move marker
   document.addEventListener('mousemove', e => {
-    if (!drag.active || state.screen !== 'editor') return;
+    if (!drag.active) return;
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
     if (!drag.started) {
@@ -1219,17 +922,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const pctX  = snapToGrid(Math.round(((cx - imgRect.x) / imgRect.width)  * 1000) / 10);
     const pctY  = snapToGrid(Math.round(((cy - imgRect.y) / imgRect.height) * 1000) / 10);
     const w     = state.words[drag.wordIdx];
-    if (drag.type === 'point') {
-      w.point = { x: pctX, y: pctY };
-    } else {
-      w.arrows[drag.arrowIdx] = { x: pctX, y: pctY };
-    }
+    if (drag.type === 'point') w.point = { x: pctX, y: pctY };
+    else                       w.arrows[drag.arrowIdx] = { x: pctX, y: pctY };
     renderMarkers();
   });
 
-  // Drag — drop
   document.addEventListener('mouseup', () => {
-    if (!drag.active || state.screen !== 'editor') return;
+    if (!drag.active) return;
     drag.active = false;
     document.getElementById('markers-svg').style.cursor = '';
     if (drag.started) {
@@ -1238,12 +937,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Keyboard shortcuts (editor only)
   document.addEventListener('keydown', e => {
-    if (state.screen !== 'editor') return;
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-
-    // Suppr → supprimer la flèche sélectionnée
+    if (e.key === 'Escape') backToMeta();
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (state.selectedWord >= 0 && state.selectedArrow >= 0) {
         e.preventDefault();
@@ -1253,11 +949,6 @@ document.addEventListener('DOMContentLoaded', () => {
         markDirty(); renderWordList(); renderMarkers(); updatePlacementHint();
       }
     }
-
-    // Ctrl+Z → annuler
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-      e.preventDefault();
-      undo();
-    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
   });
 });

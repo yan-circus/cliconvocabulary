@@ -15,9 +15,11 @@ if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-let _currentUser = null;
+let _currentUser  = null;
+let _authResolved = false;
 
 auth.onAuthStateChanged(user => {
-  _currentUser = user;
+  _currentUser  = user;
+  _authResolved = true;
   if (typeof window.onAuthChanged === 'function') window.onAuthChanged(user);
 });

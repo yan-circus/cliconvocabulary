@@ -1,0 +1,278 @@
+// shared/editor_manager.js — browser commun pour les éditeurs de jeux LudoEdu
+// Chargé dynamiquement après les scripts du jeu. Utilise window.editorService.
+
+const _GAME = new URLSearchParams(location.search).get('game') || '';
+
+const _state = {
+  families:       [],
+  selectedFamily: null,
+  levels:         [],
+  level:          null,
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showErr(id, m) { const el = document.getElementById(id); if (el) el.textContent = m; }
+function setLoading(btn, on) {
+  btn.disabled = on;
+  if (on)  { btn.dataset.txt = btn.textContent; btn.textContent = '…'; }
+  else     { btn.textContent = btn.dataset.txt || btn.textContent; }
+}
+function showModal(id)  { document.getElementById(id).style.display = 'flex'; }
+function hideModal(id)  { document.getElementById(id).style.display = 'none'; }
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+window.onAuthChanged = user => {
+  if (!user) {
+    location.href = _GAME ? '../' + _GAME + '/index.html' : '../index.html';
+    return;
+  }
+  _initManager();
+};
+// Si l'auth a déjà été résolue avant le chargement de ce script (chargement dynamique)
+if (_authResolved) window.onAuthChanged(_currentUser);
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+function _initManager() {
+  const gameName = editorService.GAME_NAME || _GAME;
+  document.getElementById('page-title').textContent = gameName + ' — Éditeur';
+  document.title = gameName + ' — Éditeur';
+  document.getElementById('home-link').href = '../' + _GAME + '/index.html';
+
+  const diffSel = document.getElementById('new-level-diff');
+  diffSel.innerHTML = '';
+  (editorService.DIFFICULTIES || []).forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id; opt.textContent = d.label;
+    diffSel.appendChild(opt);
+  });
+
+  _loadBrowser();
+}
+
+// ── Browser ───────────────────────────────────────────────────────────────────
+
+async function _loadBrowser() {
+  await _refreshFamilies();
+}
+
+async function _refreshFamilies() {
+  _state.families = await editorService.getFamilies();
+  _renderFamilyList();
+  if (_state.families.length === 0) {
+    _state.selectedFamily = null;
+    document.getElementById('family-title').textContent = 'Aucune famille — créez-en une';
+    _state.levels = [];
+    _renderLevelGrid();
+    return;
+  }
+  const current = _state.selectedFamily
+    ? (_state.families.find(f => f.docId === _state.selectedFamily.docId) || _state.families[0])
+    : _state.families[0];
+  await _selectFamily(current);
+}
+
+function _renderFamilyList() {
+  const container = document.getElementById('family-list');
+  container.innerHTML = '';
+  _state.families.forEach(fam => {
+    const active = _state.selectedFamily?.docId === fam.docId;
+    const item   = document.createElement('div');
+    item.className = 'family-item' + (active ? ' active' : '');
+    item.innerHTML = `
+      <span class="family-name">${esc(fam.name)}</span>
+      <button class="icon-btn danger" title="Supprimer" data-fid="${fam.docId}">✕</button>
+    `;
+    item.addEventListener('click', e => { if (e.target.dataset.fid) return; _selectFamily(fam); });
+    item.querySelector('[data-fid]').addEventListener('click', () => _confirmDeleteFamily(fam));
+    container.appendChild(item);
+  });
+}
+
+async function _selectFamily(fam) {
+  _state.selectedFamily = fam;
+  _renderFamilyList();
+  document.getElementById('family-title').textContent = fam.name;
+  _state.levels = await editorService.getLevels(fam.id);
+  _renderLevelGrid();
+}
+
+function _renderLevelGrid() {
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+  _state.levels.forEach(lvl => {
+    const diff = (editorService.DIFFICULTIES || []).find(d => d.id === lvl.difficulty);
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    card.innerHTML = `
+      <div class="level-card-title">${esc(lvl.title || lvl.name)}</div>
+      <div class="level-card-diff">${diff ? diff.label : '—'}</div>
+      ${lvl.notes ? `<div class="level-card-notes">${esc(lvl.notes)}</div>` : ''}
+      ${lvl.valid ? '<div class="level-card-valid">✓ Valide</div>' : ''}
+      <div class="level-card-actions">
+        <button class="btn btn-sm btn-primary">Éditer</button>
+        <button class="btn btn-sm btn-danger">✕</button>
+      </div>
+    `;
+    card.querySelectorAll('.btn')[0].addEventListener('click', () => _openMeta(lvl));
+    card.querySelectorAll('.btn')[1].addEventListener('click', () => _confirmDeleteLevel(lvl));
+    grid.appendChild(card);
+  });
+  const newCard = document.createElement('div');
+  newCard.className = 'level-card level-card-new';
+  newCard.textContent = '+ Nouveau niveau';
+  newCard.addEventListener('click', _openNewLevelModal);
+  grid.appendChild(newCard);
+}
+
+async function _confirmDeleteFamily(fam) {
+  if (!confirm('Supprimer la famille "' + fam.name + '" et tous ses niveaux ?')) return;
+  if (_state.selectedFamily?.docId === fam.docId) _state.selectedFamily = null;
+  await editorService.deleteFamily(fam.docId);
+  await _refreshFamilies();
+}
+
+async function _confirmDeleteLevel(lvl) {
+  if (!confirm('Supprimer le niveau "' + (lvl.title || lvl.name) + '" ?')) return;
+  await editorService.deleteLevel(lvl.docId);
+  _state.levels = await editorService.getLevels(_state.selectedFamily.id);
+  _renderLevelGrid();
+}
+
+// ── New level modal ───────────────────────────────────────────────────────────
+
+function _openNewLevelModal() {
+  if (!_state.selectedFamily) { alert('Sélectionnez d\'abord une famille.'); return; }
+  document.getElementById('new-level-name').value  = '';
+  document.getElementById('new-level-diff').value  =
+    String(editorService.DIFFICULTIES?.[0]?.id ?? 1);
+  document.getElementById('new-level-notes').value = '';
+  showErr('modal-error', '');
+  showModal('new-level-modal');
+  document.getElementById('new-level-name').focus();
+}
+
+async function _handleCreateLevel(e) {
+  e.preventDefault();
+  const name  = document.getElementById('new-level-name').value.trim();
+  const diff  = parseInt(document.getElementById('new-level-diff').value);
+  const notes = document.getElementById('new-level-notes').value.trim();
+  if (!name) { showErr('modal-error', 'Le nom est obligatoire.'); return; }
+  const btn = document.getElementById('create-level-btn');
+  setLoading(btn, true);
+  try {
+    const fam = _state.selectedFamily;
+    await editorService.createLevel(fam.id, fam.uuid, name, diff, notes);
+    hideModal('new-level-modal');
+    _state.levels = await editorService.getLevels(fam.id);
+    _renderLevelGrid();
+  } catch (err) {
+    showErr('modal-error', err.message);
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+// ── Level meta panel ──────────────────────────────────────────────────────────
+
+function _openMeta(lvl) {
+  _state.level = lvl;
+
+  document.getElementById('meta-title').textContent =
+    (_state.selectedFamily?.name || '') + ' / ' + (lvl.title || lvl.name);
+  document.getElementById('meta-name').value  = lvl.title || lvl.name || '';
+  document.getElementById('meta-notes').value = lvl.notes || '';
+  showErr('meta-error', '');
+
+  const famSel = document.getElementById('meta-family');
+  famSel.innerHTML = '';
+  _state.families.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.docId; opt.textContent = f.name;
+    if (f.docId === (_state.selectedFamily?.docId || '')) opt.selected = true;
+    famSel.appendChild(opt);
+  });
+
+  const diffSel = document.getElementById('meta-diff');
+  diffSel.innerHTML = '';
+  (editorService.DIFFICULTIES || []).forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id; opt.textContent = d.label;
+    if (d.id === lvl.difficulty) opt.selected = true;
+    diffSel.appendChild(opt);
+  });
+
+  document.getElementById('level-meta-panel').style.display = 'flex';
+}
+
+async function _handleSaveMeta() {
+  const btn  = document.getElementById('meta-save-btn');
+  const name = document.getElementById('meta-name').value.trim();
+  if (!name) { showErr('meta-error', 'Le nom est obligatoire.'); return; }
+  const famDocId = document.getElementById('meta-family').value;
+  const diff     = parseInt(document.getElementById('meta-diff').value);
+  const notes    = document.getElementById('meta-notes').value;
+  const newFam   = _state.families.find(f => f.docId === famDocId);
+
+  setLoading(btn, true);
+  try {
+    const updates = { name, title: name, difficulty: diff, notes };
+    if (newFam && Number(newFam.id) !== Number(_state.level.family_id)) {
+      updates.family_id   = Number(newFam.id);
+      updates.family_uuid = newFam.uuid;
+    }
+    await editorService.updateLevelMeta(_state.level.docId, updates);
+    Object.assign(_state.level, updates);
+    if (newFam) _state.selectedFamily = newFam;
+    await _closeMetaPanel();
+    if (_state.selectedFamily) {
+      _state.levels = await editorService.getLevels(_state.selectedFamily.id);
+      _renderFamilyList();
+      document.getElementById('family-title').textContent = _state.selectedFamily.name;
+      _renderLevelGrid();
+    }
+  } catch (err) {
+    showErr('meta-error', err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function _closeMetaPanel() {
+  document.getElementById('level-meta-panel').style.display = 'none';
+  if (_state.selectedFamily) {
+    _state.levels = await editorService.getLevels(_state.selectedFamily.id);
+    _renderLevelGrid();
+  }
+}
+
+function _openEditor() {
+  if (!_state.level) return;
+  location.href = '../' + _GAME + '/editor.html?level=' + _state.level.docId;
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+
+document.getElementById('logout-btn').addEventListener('click', () =>
+  editorService.signOut().catch(console.error)
+);
+
+document.getElementById('add-family-btn').addEventListener('click', async () => {
+  const name = prompt('Nom de la nouvelle famille :');
+  if (!name?.trim()) return;
+  const fam = await editorService.createFamily(name.trim());
+  _state.selectedFamily = fam;
+  await _refreshFamilies();
+});
+
+document.getElementById('new-level-form').addEventListener('submit', _handleCreateLevel);
+document.getElementById('cancel-modal-btn').addEventListener('click', () => hideModal('new-level-modal'));
+
+document.getElementById('meta-cancel-btn').addEventListener('click', _closeMetaPanel);
+document.getElementById('meta-save-btn').addEventListener('click', _handleSaveMeta);
+document.getElementById('meta-edit-btn').addEventListener('click', _openEditor);

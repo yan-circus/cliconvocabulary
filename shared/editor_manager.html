@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Éditeur — LudoEdu</title>
+  <link rel="stylesheet" href="editor_manager.css">
+</head>
+<body>
+
+<!-- ══ Browser ════════════════════════════════════════════════════════════════ -->
+<div class="em-layout">
+  <header class="browser-header">
+    <a id="home-link" href="#" class="btn btn-secondary">← Accueil</a>
+    <h1 id="page-title">Éditeur</h1>
+    <button id="logout-btn" class="btn btn-secondary">Déconnexion</button>
+  </header>
+  <div class="browser-body">
+
+    <aside class="family-sidebar">
+      <div class="sidebar-header">
+        <span>Familles</span>
+        <button id="add-family-btn" class="icon-btn" title="Nouvelle famille">＋</button>
+      </div>
+      <div id="family-list" class="family-list"></div>
+    </aside>
+
+    <section class="level-area">
+      <div class="level-area-header">
+        <h2 id="family-title">Sélectionnez une famille</h2>
+      </div>
+      <div id="level-grid" class="level-grid"></div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ══ Level meta panel ════════════════════════════════════════════════════════ -->
+<div id="level-meta-panel" class="level-meta-overlay" style="display:none">
+  <div class="level-meta-card">
+    <div class="level-meta-card-header">
+      <h2 id="meta-title"></h2>
+    </div>
+    <div class="level-meta-card-body">
+      <div class="form-group">
+        <label>Nom du niveau</label>
+        <input id="meta-name" type="text" required>
+      </div>
+      <div class="form-group">
+        <label>Famille</label>
+        <select id="meta-family"></select>
+      </div>
+      <div class="form-group">
+        <label>Difficulté</label>
+        <select id="meta-diff"></select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="meta-notes" rows="4" placeholder="Description, contexte, remarques…"></textarea>
+      </div>
+      <div id="meta-error" class="error-msg"></div>
+      <button id="meta-edit-btn" class="btn btn-primary btn-full" style="margin-top:8px">
+        🖊 Éditer le contenu →
+      </button>
+    </div>
+    <div class="level-meta-card-footer">
+      <button id="meta-cancel-btn" class="btn btn-secondary">Annuler</button>
+      <button id="meta-save-btn" class="btn btn-success">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ New level modal ════════════════════════════════════════════════════════ -->
+<div id="new-level-modal" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h2>Nouveau niveau</h2>
+    <form id="new-level-form">
+      <div class="form-group">
+        <label>Nom du niveau</label>
+        <input id="new-level-name" type="text" placeholder="ex : Addition jusqu'à 10" required>
+      </div>
+      <div class="form-group">
+        <label>Difficulté</label>
+        <select id="new-level-diff"></select>
+      </div>
+      <div class="form-group">
+        <label>Notes (optionnel)</label>
+        <textarea id="new-level-notes" rows="3" placeholder="Description, contexte…"></textarea>
+      </div>
+      <div id="modal-error" class="error-msg"></div>
+      <div class="modal-actions">
+        <button id="cancel-modal-btn" type="button" class="btn btn-secondary">Annuler</button>
+        <button id="create-level-btn" type="submit" class="btn btn-primary">Créer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Firebase SDK CDN -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+(async function () {
+  const _game = new URLSearchParams(location.search).get('game');
+  if (!_game) {
+    document.body.innerHTML = '<p style="padding:20px;color:#e0e0f0">Paramètre <code>?game=</code> manquant.</p>';
+    return;
+  }
+
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = res;
+      s.onerror = () => rej(new Error('Impossible de charger : ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  try {
+    await loadScript('firebase-core.js');
+    await loadScript('platform-methods.js');
+    await loadScript('editor-platform-methods.js');
+    await loadScript('../' + _game + '/editor-firebase-service.js');
+    await loadScript('editor_manager.js');
+  } catch (e) {
+    console.error(e);
+    document.body.innerHTML = '<p style="padding:20px;color:#ff7675">Erreur de chargement : ' + e.message + '</p>';
+  }
+})();
+</script>
+</body>
+</html>
