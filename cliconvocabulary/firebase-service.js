@@ -29,4 +29,9 @@ window.gameService = {
     const snap = await db.collection('levels').doc(String(levelDocId)).collection('words').get();
     return snap.size;
   },
+
+  getItemCount: async (levelDocId) => {
+    const snap = await db.collection('levels').doc(String(levelDocId)).collection('words').get();
+    return snap.size;
+  },
 };

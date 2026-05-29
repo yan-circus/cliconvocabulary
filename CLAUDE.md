@@ -38,8 +38,38 @@ dans le service du jeu, `GAME_CONFIG.game_id` pour les méthodes progress.
 **Familles/Niveaux** (filtrent par `GAME_ID`) : `getFamilies`, `getLevels(familyId)`,
 `getLevelById(levelDocId)`, `getAllLevels`
 
+**Types de jeu** : `getGameTypes()` — fetches `game_types` where `game_id == GAME_ID`, triés par `order`
+
 **Progress/Scores** (utilisent `GAME_CONFIG.game_id` comme slug) : `getProgress`,
 `updateProgress`, `saveScore`, `getProgressForProfiles`
+
+### shared/index.js
+**Page d'accueil générique pour tous les jeux.** Construit tout le DOM dans `<div id="app">`,
+gère : profils, familles/carousel, grille de niveaux, modes, difficulté, scores, aide, auth.
+
+**Requiert** : `GAME_CONFIG` (game-config.js), `gameService` (firebase-service.js).
+
+**Configure via `GAME_CONFIG` :**
+```js
+GAME_CONFIG.name          // ex: 'CliConVocabulary'
+GAME_CONFIG.modes         // [{slug, id, icon, label, chrono_s, audio_required, score_tracking}]
+GAME_CONFIG.difficulties  // [{id, label}] — utilisé si ui.difficulty
+GAME_CONFIG.ui = {
+  level_display:  'thumbnail' | 'list',
+  audio:          bool,   // affiche le toggle son
+  chrono:         bool,   // affiche le toggle chrono
+  difficulty:     bool,   // affiche la barre de difficulté
+  access_control: bool,   // affiche le lien "Niveaux autorisés" (access.html)
+  item_label:     string, // label au singulier pour le compteur footer (ex: 'mot', 'question')
+}
+GAME_CONFIG.help_sections  // [{title, text}] — contenu du panneau Aide
+```
+
+**Requiert aussi `gameService.getItemCount(levelDocId)`** → nombre d'items du niveau (pour le footer).
+
+**localStorage** : clés préfixées par `GAME_CONFIG.game_id` (ex: `cliconvocabulary-mode`).
+
+**`VERSION`** : constante dans ce fichier, à incrémenter à chaque push.
 
 ### shared/editor-platform-methods.js
 Définit `_editorPlatformMethods` et deux helpers async. Requiert `firebase-core.js` avant.
@@ -97,7 +127,8 @@ levels/{docId}                     → niveau (game_id, family_id, name, title, 
                                      notes, valid, item_count…) + champs spécifiques au jeu
   words/{docId}                    → sous-collection CliConVocabulary uniquement
 games/{id}                         → métadonnées jeu
-game_types/{id}                    → types de jeu (game_id, name)
+game_types/{id}                    → types de jeu (game_id, id, slug, name, icon, order,
+                                     chrono_s, audio_required) — à enrichir via seedGameTypes
 ```
 
 ### Registre des GAME_ID
@@ -114,13 +145,20 @@ game_types/{id}                    → types de jeu (game_id, name)
 **game_id : `2` — slug : `'cliconvocabulary'`** — jeu complet et fonctionnel.
 
 ### game-config.js
-`GAME_CONFIG.game_id = 'cliconvocabulary'`
-`GAME_CONFIG.game_types = { learning:0, findword:1, chooseword:2, typeword:3, listenclick:4 }`
-`GAME_CONFIG.chrono_s`, `GAME_CONFIG.score3_per_question = 500`, `GAME_CONFIG.difficulties`
-`ICONS.speaker` : SVG inline.
+```js
+GAME_CONFIG.game_id = 'cliconvocabulary'
+GAME_CONFIG.name    = 'CliConVocabulary'
+GAME_CONFIG.modes   = [ learning(0), findword(1), chooseword(2), typeword(3), listenclick(4) ]
+GAME_CONFIG.ui      = { level_display:'thumbnail', audio:true, chrono:true, difficulty:false,
+                        access_control:true, item_label:'mot' }
+// Backward compat game.js :
+GAME_CONFIG.game_types = { learning:0, findword:1, … }
+GAME_CONFIG.chrono_s   = { findword:8, chooseword:5, typeword:20, listenclick:5 }
+ICONS.speaker : SVG inline
+```
 
 ### firebase-service.js
-`window.gameService = { ..._platformMethods, GAME_ID:2, getWords(levelDocId), getWordCount(levelDocId) }`
+`window.gameService = { ..._platformMethods, GAME_ID:2, getWords(levelDocId), getWordCount(levelDocId), getItemCount(levelDocId) }`
 
 ### editor-firebase-service.js
 `window.editorService = { ..._platformMethods, ..._editorPlatformMethods, GAME_ID:2, GAME_NAME:'CliConVocabulary', DIFFICULTIES, … }`
@@ -130,14 +168,15 @@ Méthodes spécifiques : `createFamily`, `deleteFamily` (+ sous-coll. words), `c
 Storage initialisé en lazy via `_storage()` pour ne pas crasher dans editor_manager.html.
 Auth aliases : `getProvider()`, `reauthPassword(pw)`, `reauthGoogle()`.
 
-### index.html + index.js
-Sélection profil, familles, grille niveaux, lancement jeu.
-Lien superviseur vers `../shared/editor_manager.html?game=cliconvocabulary`.
+### index.html
+Thin wrapper : charge `game.css` + Firebase SDKs + `game-config.js` + `shared/index.js`.
+Contient uniquement `<div id="app"></div>` — tout le DOM est construit par `shared/index.js`.
 
 ### game.html + game.js
 Modes : `learning`, `findword`, `chooseword`, `typeword`, `listenclick`.
 Lit params URL : `level`, `mode`, `chrono`, `audio`, `avatar`, `player`, `profile`.
 Appelle `gameService.getWords`, `saveScore`, `updateProgress`.
+**`VERSION`** à incrémenter à chaque push.
 
 ### editor.html + editor.js
 **Éditeur de contenu uniquement** (marqueurs, mots, image, audio).
@@ -155,70 +194,52 @@ Gestion accès niveaux par le superviseur.
 
 **game_id : `3` — slug : `'calcnplay'`** — jeu de calcul mental, en cours de création.
 
-### Ce qui existe et fonctionne
-
-- `game-config.js` : `GAME_CONFIG.game_id = 'calcnplay'`, `GAME_ID = 3`
-- `firebase-service.js` : `window.gameService = { ..._platformMethods, GAME_ID:3 }` (stub)
-- `editor-firebase-service.js` : `window.editorService` complet pour le manager
-- `formats.json` : 5 formats de question prédéfinis (voir ci-dessous)
-- `editor.html` + `editor.js` + `editor.css` : éditeur de niveaux complet
-
-### editor.html — éditeur de niveaux CalcNPlay
-
-Layout 2 colonnes. Reçoit `?level=` depuis le manager. Sauvegarde dans `level.rules`.
-
-**Colonne gauche — réglages :**
-- Mode toggle : `computed` (calculé par ordi) ou `list` (liste prédéfinie)
-- Mode computed : opérandes `a` et `b` avec `{min, max, coef}`, opérateurs cochés +−×÷,
-  contrainte résultat `{min, max}`, sélection de format
-- Mode list : tableau question/réponse éditable
-
-**Logique de génération (mode computed) :**
-| Op | Affichée | Réponse |
-|----|----------|---------|
-| +  | a + b    | a+b     |
-| −  | (a+b) − b | a     |
-| ×  | a × b    | a×b     |
-| ÷  | (a×b) ÷ b | a     |
-
-**Colonne droite :**
-- Liste d'exemples générés (10/20/50/100) — respecte le format choisi
-- Zone de test interactive : activation au clic, saisie chiffre par chiffre, validation auto
-
-### formats.json
-
-Templates avec variables `{op1}`, `{op2}`, `{op}`, `{result}`, `{?}` (élément caché).
-Chaque format a : `id`, `label`, `template`, `placeholder_display` (?/...), `answer_key` (result/op1/op2).
-
-5 formats : résultat inconnu, 1er/2e terme inconnu (style `?`), 1er/2e terme inconnu (style `...`).
-
-### Structure rules dans Firestore (champ `rules` sur le doc level)
-
+### game-config.js
 ```js
-// mode computed
-{
-  mode: 'computed',
-  computed: {
-    a: { min:1, max:10, coef:1 },
-    b: { min:1, max:10, coef:1 },
-    operators: ['+', '-'],       // opérateurs actifs
-    result: { min:null, max:null },
-    format_id: 'default',
-  },
-  list: { questions: [] },
-}
-// mode list
-{ mode: 'list', computed: {...}, list: { questions: [{q:'12+5', a:'17'}] } }
+GAME_CONFIG.game_id = 'calcnplay'
+GAME_CONFIG.name    = 'CalcNPlay'
+GAME_CONFIG.modes   = [ { slug:'calcul', id:0, icon:'🧮', label:'Calcul mental', chrono_s:10,
+                          audio_required:false, score_tracking:true } ]
+GAME_CONFIG.ui      = { level_display:'list', audio:false, chrono:true, difficulty:true,
+                        access_control:false, item_label:'question' }
+GAME_CONFIG.difficulties = [ CP(1), CE1(2), CE2(3), CM1(4), CM2(5) ]
+// Backward compat game.js :
+GAME_CONFIG.game_types = { calcul:0 }
+GAME_CONFIG.chrono_s   = { calcul:10 }
 ```
+
+### firebase-service.js
+`window.gameService = { ..._platformMethods, GAME_ID:3, getItemCount(levelDocId) }`
+`getItemCount` retourne le nombre de questions (mode list) ou `null` (mode computed).
+
+### editor-firebase-service.js + formats.json + editor.html + editor.js + editor.css
+Éditeur de niveaux complet — voir section précédente pour les détails.
+
+### index.html
+Thin wrapper identique à CliConVocabulary — tout géré par `shared/index.js`.
+Affiche : label mode unique "🧮 Calcul mental" (sans dropdown), barre de difficulté CP→CM2,
+grille en liste (pas de thumbnail).
 
 ### Ce qui reste à créer
 - `game.js` : logique jeu calcul mental (réécrire depuis zéro)
-- `index.js` : adapter (supprimer refs vocab, définir modes calcul)
-- `index.html` : à adapter (modes de jeu calcul)
+- `game.html` : à adapter pour CalcNPlay (supprimer image/SVG/marqueurs)
 
 ---
 
-## Ordre de chargement — pages jeu (index, game)
+## Ordre de chargement — pages index (thin wrapper)
+
+```html
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="game-config.js"></script>
+<script src="../shared/firebase-core.js"></script>
+<script src="../shared/platform-methods.js"></script>
+<script src="firebase-service.js"></script>
+<script src="../shared/index.js"></script>
+```
+
+## Ordre de chargement — game.html
 
 ```html
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -229,7 +250,7 @@ Chaque format a : `id`, `label`, `template`, `placeholder_display` (?/...), `ans
 <script src="../shared/firebase-core.js"></script>
 <script src="../shared/platform-methods.js"></script>
 <script src="firebase-service.js"></script>
-<script src="index.js"></script>  <!-- ou game.js -->
+<script src="game.js"></script>
 ```
 
 ## Ordre de chargement — éditeur de contenu (editor.html)
@@ -255,20 +276,22 @@ Ne pas charger `game-config.js` (inutile pour le manager).
 
 ## Créer un nouveau jeu — checklist
 
-1. `monjeu/game-config.js` : `GAME_CONFIG.game_id` (slug unique), `GAME_ID` (entier unique)
-2. `monjeu/firebase-service.js` : `window.gameService = { ..._platformMethods, GAME_ID, … }`
+1. `monjeu/game-config.js` : `GAME_CONFIG.game_id`, `GAME_CONFIG.name`, `GAME_CONFIG.modes`,
+   `GAME_CONFIG.ui`, `GAME_CONFIG.help_sections`, `GAME_CONFIG.difficulties` (si ui.difficulty)
+2. `monjeu/firebase-service.js` : `window.gameService = { ..._platformMethods, GAME_ID, getItemCount, … }`
 3. `monjeu/editor-firebase-service.js` : `window.editorService` avec `GAME_NAME`, `DIFFICULTIES`,
    `createFamily`, `deleteFamily`, `createLevel`, `deleteLevel` (+ `..._editorPlatformMethods`)
 4. `monjeu/editor.html` + `editor.js` : éditeur de contenu, reçoit `?level=`, redirige
    vers `../shared/editor_manager.html?game=monjeu` si non auth
-5. `monjeu/index.html` : lien superviseur → `../shared/editor_manager.html?game=monjeu`
-6. Firestore : créer `games/{id}` et `game_types/{id}`
+5. `monjeu/index.html` : thin wrapper (`<div id="app">` + scripts + `../shared/index.js`)
+6. `monjeu/game.html` + `game.js` : logique jeu
+7. Firestore : créer `games/{id}` et `game_types/{id}` (avec slug, icon, order, chrono_s)
 
 ## Conventions
 
 - Pas de build system, pas de modules ES6
 - Globaux entre fichiers : `const`/`let` top-level visibles dans les scripts suivants
-- `window.gameService` sur les pages jeu, `window.editorService` sur les pages éditeur
+- `window.gameService` sur les pages jeu/index, `window.editorService` sur les pages éditeur
 - Auth callback unique : `window.onAuthChanged(user)`
 - Chargement dynamique (editor_manager) : tester `if (_authResolved) window.onAuthChanged(_currentUser)` après avoir défini le callback
-- Version bump dans `index.js` et `game.js` à chaque push (`const VERSION`)
+- **Version bump** : `VERSION` dans `shared/index.js` et `game.js` à chaque push

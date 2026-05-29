@@ -114,6 +114,12 @@ const _platformMethods = {
       .sort((a, b) => (a.family_id - b.family_id) || (a.id - b.id));
   },
 
+  getGameTypes: async () => {
+    const snap = await db.collection('game_types').where('game_id', '==', GAME_ID).get();
+    return snap.docs.map(d => ({ docId: d.id, ...d.data() }))
+      .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+  },
+
   // ── Progress & scores ────────────────────────────────────────────────────────
   // These use GAME_CONFIG.game_id (string slug) — only called from game pages
   // where game-config.js is loaded.
