@@ -331,6 +331,14 @@
   flex-direction: column;
   gap: 10px;
   min-height: 120px;
+  cursor: pointer;
+  border-top: 2px solid transparent;
+  transition: background .15s, border-color .15s;
+}
+.test-section.active {
+  background: #12122a;
+  border-top-color: var(--primary);
+  cursor: default;
 }
 
 .test-header {
@@ -338,6 +346,15 @@
   align-items: center;
   gap: 8px;
 }
+
+.test-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: auto;
+  transition: opacity .15s;
+}
+.test-section.active .test-hint { opacity: 0; }
 
 .test-question {
   font-size: 20px;

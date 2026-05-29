@@ -12,6 +12,7 @@ let _isDirty     = false;
 let _testQ       = null;   // question courante dans le test
 let _testSlots   = [];     // [{char, isDigit, typed}]
 let _testLocked  = false;  // bloque l'input pendant le feedback
+let _testActive  = false;  // section test active (clavier écouté)
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -263,10 +264,13 @@ function generateExamples() {
       list.innerHTML = '<div class="ex-empty">Règles trop contraignantes — aucune question possible.</div>';
       return;
     }
-    const fullStr = _renderFull(fmt?.template || '{op1} {op} {op2} = {?}', q, fmt?.answer_key || 'result');
+    const questionStr = _renderTemplate(
+      fmt?.template || '{op1} {op} {op2} = {?}', q, fmt?.placeholder_display || '?');
+    const answerKey = fmt?.answer_key || 'result';
+    const answerVal = answerKey === 'op1' ? q.op1 : answerKey === 'op2' ? q.op2 : q.result;
     const div = document.createElement('div');
     div.className = 'example-item';
-    div.textContent = fullStr;
+    div.innerHTML = `<span class="ex-q">${questionStr}</span><span class="ex-a">${_num(answerVal)}</span>`;
     list.appendChild(div);
   }
 }
@@ -519,8 +523,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // Test reset
   document.getElementById('test-reset-btn').addEventListener('click', _nextTestQuestion);
 
-  // Keyboard input for test zone (when no input field is focused)
+  // Activation de la zone de test au clic
+  const testSection = document.querySelector('.test-section');
+  testSection.addEventListener('click', e => {
+    if (e.target.closest('#test-reset-btn')) return; // le bouton reset gère son propre clic
+    _testActive = true;
+    testSection.classList.add('active');
+  });
+  document.addEventListener('click', e => {
+    if (!testSection.contains(e.target)) {
+      _testActive = false;
+      testSection.classList.remove('active');
+    }
+  });
+
+  // Keyboard input pour la zone de test (seulement si active)
   document.addEventListener('keydown', e => {
+    if (!_testActive) return;
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     _handleTestKey(e.key);
