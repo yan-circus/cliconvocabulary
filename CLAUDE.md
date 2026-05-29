@@ -8,64 +8,80 @@ Stack : HTML/CSS/JS vanilla, pas de build system, scripts chargés via `<script>
 
 ```
 shared/                  ← code partagé entre tous les jeux
-cliconvocabulary/        ← premier jeu (actuellement à la racine)
-calcnplay/               ← deuxième jeu (à créer)
+cliconvocabulary/        ← jeu 1 : vocabulaire anglais (images + marqueurs)
+calcnplay/               ← jeu 2 : calcul mental (en cours)
 ```
-
-Chaque jeu est dans son propre sous-dossier. Les fichiers partagés sont dans `shared/`.
 
 ---
 
-## shared/
+## shared/ — fichiers partagés
 
 ### shared/firebase-core.js
-Initialise Firebase, expose les globaux `auth`, `db`, `_currentUser`.
-Appelle `window.onAuthChanged(user)` à chaque changement d'état auth.
-**Doit être chargé avant tout fichier service.**
-Ne charge pas Firebase Storage (fait par les jeux qui en ont besoin).
+Initialise Firebase, expose les globaux `auth`, `db`, `_currentUser`, `_authResolved`.
+- Appelle `window.onAuthChanged(user)` à chaque changement d'état auth.
+- `_authResolved` passe à `true` dès que Firebase a résolu l'état auth (utile pour le
+  chargement dynamique de scripts : après avoir défini `window.onAuthChanged`, tester
+  `if (_authResolved) window.onAuthChanged(_currentUser)` pour éviter la race condition).
+- **Doit être chargé avant tout fichier service.**
+- Ne charge pas Firebase Storage (chargé uniquement par les pages qui en ont besoin).
 
 ### shared/platform-methods.js
-Définit l'objet `_platformMethods` (global, pas sur `window`).
-Requiert : `firebase-core.js` chargé avant, `GAME_ID` (entier) défini dans le fichier service du jeu, `GAME_CONFIG.game_id` (slug string) pour les méthodes progress (disponible sur les pages jeu).
+Définit `_platformMethods` (global). Requiert `firebase-core.js` avant, `GAME_ID` défini
+dans le service du jeu, `GAME_CONFIG.game_id` pour les méthodes progress.
 
-Méthodes disponibles :
+**Auth** : `getUser`, `signIn`, `signOut`, `signInWithGoogle`, `signUp`, `resetPassword`,
+`reauthWithPassword`, `reauthWithGoogle`, `getSupervisorProvider`
 
-**Auth**
-- `getUser()` → utilisateur Firebase courant
-- `signIn(email, pw)`, `signOut()`, `signInWithGoogle()`, `signUp(email, pw, prenom, nom, avatarId)`, `resetPassword(email)`
-- `reauthWithPassword(pw)`, `reauthWithGoogle()`
-- `getSupervisorProvider()` → `'password'` | `'google.com'` | null
+**Profils** : `getProfiles`, `createChildProfile`, `updateProfileAvatar`,
+`updateDeniedLevels`, `updateShowLockedSetting`, `updateSupervisorSettings`, `getUserAccount`
 
-**Profils**
-- `getProfiles()` → liste des profils liés au compte connecté
-- `createChildProfile(prenom, nom, avatarId)` → nouveau profil enfant
-- `updateProfileAvatar(profileId, avatarId)`
-- `updateDeniedLevels(profileId, deniedLevels)`
-- `updateShowLockedSetting(profileId, showLocked)`
-- `updateSupervisorSettings(profileId, settings)`
-- `getUserAccount()` → doc Firestore `users/{uid}`
+**Familles/Niveaux** (filtrent par `GAME_ID`) : `getFamilies`, `getLevels(familyId)`,
+`getLevelById(levelDocId)`, `getAllLevels`
 
-**Niveaux et familles** (filtrent par `GAME_ID`)
-- `getFamilies()` → familles triées par `id`
-- `getLevels(familyId)` → niveaux d'une famille
-- `getLevelById(levelDocId)` → un niveau par docId
-- `getAllLevels()` → tous les niveaux du jeu
+**Progress/Scores** (utilisent `GAME_CONFIG.game_id` comme slug) : `getProgress`,
+`updateProgress`, `saveScore`, `getProgressForProfiles`
 
-**Progress et scores** (utilisent `GAME_CONFIG.game_id` comme slug)
-- `getProgress(profileId)` → `{ best_scores: { "levelId_typeId": stars }, best_points: {...} }`
-- `updateProgress(profileId, levelDocId, gameTypeId, stars, points)` → garde le meilleur
-- `saveScore(profileId, data)` → ajoute dans `profiles/{id}/scores`
-- `getProgressForProfiles(profileIds[])` → map profileId → progress
+### shared/editor-platform-methods.js
+Définit `_editorPlatformMethods` et deux helpers async. Requiert `firebase-core.js` avant.
 
-**Usage dans un fichier service de jeu :**
-```js
-const GAME_ID = 3; // entier unique par jeu dans Firestore
-window.gameService = {
-  ..._platformMethods,
-  GAME_ID,
-  // méthodes spécifiques au jeu...
-};
+- `_editorNextFamilyId()` → prochain id entier auto-incrémenté pour `level_families`
+- `_editorNextLevelId()` → prochain id entier auto-incrémenté pour `levels`
+- `_editorPlatformMethods.updateLevelMeta(levelDocId, fields)` → update Firestore générique
+
+À charger dans **toutes** les pages éditeur (manager et éditeur de contenu).
+
+### shared/editor_manager.html + editor_manager.js + editor_manager.css
+**Page browser commune à tous les jeux.** Gère : familles, niveaux, meta panel, modal
+nouveau niveau. Aucune logique spécifique au jeu.
+
+**Fonctionnement :** charge les scripts dynamiquement selon `?game=` dans l'URL.
+Séquence de chargement (async/await) :
 ```
+firebase-core.js → platform-methods.js → editor-platform-methods.js
+→ ../${game}/editor-firebase-service.js → editor_manager.js
+```
+Pas de `game-config.js` (non nécessaire pour le manager).
+
+**Utilise `window.editorService`** qui doit exposer :
+```js
+{
+  GAME_NAME,          // string — affiché dans le titre
+  DIFFICULTIES,       // [{id, label}] — pour les selects
+  GAME_ID,            // entier
+  getFamilies(),      // depuis _platformMethods
+  getLevels(famId),   // depuis _platformMethods
+  signOut(),          // depuis _platformMethods
+  createFamily(name),
+  deleteFamily(familyDocId),
+  createLevel(familyId, familyUuid, name, difficulty, notes),
+  deleteLevel(levelDocId),
+  updateLevelMeta(levelDocId, fields),  // depuis _editorPlatformMethods
+}
+```
+
+**Navigation :** clic "Éditer le contenu" → `../${game}/editor.html?level=${docId}`
+
+**Lien depuis un jeu :** `../shared/editor_manager.html?game=cliconvocabulary`
 
 ---
 
@@ -74,17 +90,15 @@ window.gameService = {
 ```
 users/{uid}                        → compte (email, profile_ids[], role)
 profiles/{id}                      → profil joueur (avatar, denied_levels, supervisors…)
-  scores/{autoId}                  → session de jeu (game_id, level_id, score, stars, played_at…)
-  progress/{game_slug}             → meilleurs scores par jeu (best_scores{}, best_points{})
-level_families/{docId}             → famille de niveaux (game_id, name, id)
-levels/{docId}                     → niveau (game_id, family_id, name, difficulty, item_count…)
-  words/{docId}                    → sous-collection spécifique CliConVocabulary
-games/{id}                         → métadonnées jeu (name, description)
+  scores/{autoId}                  → session de jeu (game_id, level_id, score, stars…)
+  progress/{game_slug}             → meilleurs scores (best_scores{}, best_points{})
+level_families/{docId}             → famille (game_id, name, id, uuid)
+levels/{docId}                     → niveau (game_id, family_id, name, title, difficulty,
+                                     notes, valid, item_count…) + champs spécifiques au jeu
+  words/{docId}                    → sous-collection CliConVocabulary uniquement
+games/{id}                         → métadonnées jeu
 game_types/{id}                    → types de jeu (game_id, name)
 ```
-
-Chaque jeu a son propre `game_id` **entier** dans `level_families` et `levels`.
-Le progress est stocké sous `progress/{game_slug}` où le slug est `GAME_CONFIG.game_id` (string).
 
 ### Registre des GAME_ID
 
@@ -97,92 +111,117 @@ Le progress est stocké sous `progress/{game_slug}` où le slug est `GAME_CONFIG
 
 ## CliConVocabulary (dossier cliconvocabulary/)
 
-**game_id Firestore : `2` — slug progress : `'cliconvocabulary'`**
+**game_id : `2` — slug : `'cliconvocabulary'`** — jeu complet et fonctionnel.
 
 ### game-config.js
-Expose `GAME_CONFIG` et `ICONS`.
-- `GAME_CONFIG.game_id` : `'cliconvocabulary'`
-- `GAME_CONFIG.game_types` : `{ learning:0, findword:1, chooseword:2, typeword:3, listenclick:4 }`
-- `GAME_CONFIG.chrono_s` : secondes par question par mode
-- `GAME_CONFIG.score3_per_question` : `500`
-- `GAME_CONFIG.difficulties` : tableau `[{id, label}]`
-- `ICONS.speaker` : SVG inline speaker (stroke currentColor)
+`GAME_CONFIG.game_id = 'cliconvocabulary'`
+`GAME_CONFIG.game_types = { learning:0, findword:1, chooseword:2, typeword:3, listenclick:4 }`
+`GAME_CONFIG.chrono_s`, `GAME_CONFIG.score3_per_question = 500`, `GAME_CONFIG.difficulties`
+`ICONS.speaker` : SVG inline.
 
 ### firebase-service.js
-Expose `window.gameService = { ..._platformMethods, GAME_ID:2, getWords, getWordCount }`.
-- `getWords(levelDocId)` → mots avec `{ fr, en, langs, point, arrows, order, audio_path }`
-- `getWordCount(levelDocId)` → nombre de mots
+`window.gameService = { ..._platformMethods, GAME_ID:2, getWords(levelDocId), getWordCount(levelDocId) }`
 
 ### editor-firebase-service.js
-Expose `window.editorService = { ..._platformMethods, DIFFICULTIES, GAME_ID:2, … }`.
-Méthodes supplémentaires : `createFamily`, `deleteFamily`, `createLevel`, `updateLevelMeta`, `deleteLevel`, `getWords`, `saveWords`, `uploadAudio`, `uploadImage`, `deleteImage`, `seedVocabularyGame`.
-Aliases editor : `getProvider()`, `reauthPassword(pw)`, `reauthGoogle()`.
+`window.editorService = { ..._platformMethods, ..._editorPlatformMethods, GAME_ID:2, GAME_NAME:'CliConVocabulary', DIFFICULTIES, … }`
+Méthodes spécifiques : `createFamily`, `deleteFamily` (+ sous-coll. words), `createLevel`
+(champs image/marqueurs), `deleteLevel` (+ sous-coll. words), `getWords`, `saveWords`,
+`uploadAudio`, `uploadImage`, `deleteImage`, `seedVocabularyGame`.
+Storage initialisé en lazy via `_storage()` pour ne pas crasher dans editor_manager.html.
+Auth aliases : `getProvider()`, `reauthPassword(pw)`, `reauthGoogle()`.
 
 ### index.html + index.js
-Page d'accueil : sélection profil, familles, grille de niveaux, lancement du jeu.
-Auth callback : `window.onAuthChanged`.
-Paramètres URL passés à `game.html` : `level`, `mode`, `profile`, `chrono`, `audio`.
+Sélection profil, familles, grille niveaux, lancement jeu.
+Lien superviseur vers `../shared/editor_manager.html?game=cliconvocabulary`.
 
 ### game.html + game.js
-Page de jeu. Modes : `learning`, `findword`, `chooseword`, `typeword`, `listenclick`.
-Lit les params URL. Appelle `gameService.getWords`, `saveScore`, `updateProgress`.
-Auth callback : non utilisé (params passés par URL).
+Modes : `learning`, `findword`, `chooseword`, `typeword`, `listenclick`.
+Lit params URL : `level`, `mode`, `chrono`, `audio`, `avatar`, `player`, `profile`.
+Appelle `gameService.getWords`, `saveScore`, `updateProgress`.
 
 ### editor.html + editor.js
-Éditeur de niveaux. Auth callback : `window.onAuthChanged`.
-Deux écrans : `browser` (liste familles/niveaux) et `editor` (mots + marqueurs + image).
+**Éditeur de contenu uniquement** (marqueurs, mots, image, audio).
+Reçoit `?level=levelDocId` depuis l'URL (navigué depuis editor_manager).
+Auth : si non connecté → redirige vers `../shared/editor_manager.html?game=cliconvocabulary`.
+Bouton "← Retour" → `history.back()`.
+Charge : `../shared/editor_manager.css` + `editor.css` (styles spécifiques).
 
 ### access.html + access.js
-Gestion des accès niveaux par le superviseur.
-Auth callback : `window.onAuthChanged`.
+Gestion accès niveaux par le superviseur.
 
 ---
 
 ## CalcNPlay (dossier calcnplay/)
 
-**game_id Firestore : `3` — slug progress : `'calcnplay'`**
+**game_id : `3` — slug : `'calcnplay'`** — jeu de calcul mental, en cours de création.
 
-À créer. Jeu de calcul mental.
+### Ce qui existe déjà
+- `game-config.js` : `GAME_CONFIG.game_id = 'calcnplay'`, `GAME_ID = 3`
+- `firebase-service.js` : `window.gameService = { ..._platformMethods, GAME_ID:3 }` (stub)
+- `editor-firebase-service.js` : `window.editorService` complet pour le manager
+  (createFamily/deleteFamily sans sous-collection, createLevel avec champs `rules:null`,
+  DIFFICULTIES, GAME_NAME:'CalcNPlay')
+- `index.html` + `index.js` : copie CliConVocabulary, à adapter
+- `game.html` + `game.js` : copie CliConVocabulary, à réécrire pour le calcul mental
+
+### Ce qui reste à créer
+- `editor.html` + `editor.js` : éditeur de règles calcul (reçoit `?level=` depuis manager)
+- Réécrire `game.js` pour la logique calcul mental
+- Adapter `index.js` (supprimer refs vocab, modes calcul)
 
 ---
 
-## Ordre de chargement des scripts (toutes pages)
+## Ordre de chargement — pages jeu (index, game)
 
 ```html
-<!-- 1. Firebase SDK CDN -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <!-- Storage uniquement si nécessaire -->
-
-<!-- 2. Config jeu (définit GAME_CONFIG) -->
 <script src="game-config.js"></script>
-
-<!-- 3. Shared (dans cet ordre) -->
-<script src="../shared/firebase-core.js"></script>    <!-- définit auth, db, _currentUser -->
-<script src="../shared/platform-methods.js"></script> <!-- définit _platformMethods -->
-
-<!-- 4. Service spécifique au jeu (définit GAME_ID, window.gameService) -->
+<script src="../shared/firebase-core.js"></script>
+<script src="../shared/platform-methods.js"></script>
 <script src="firebase-service.js"></script>
-
-<!-- 5. Logique de la page -->
-<script src="index.js"></script>
+<script src="index.js"></script>  <!-- ou game.js -->
 ```
+
+## Ordre de chargement — éditeur de contenu (editor.html)
+
+```html
+<script src="...firebase-app-compat.js"></script>
+<script src="...firebase-auth-compat.js"></script>
+<script src="...firebase-firestore-compat.js"></script>
+<script src="...firebase-storage-compat.js"></script>  <!-- si upload nécessaire -->
+<script src="../shared/firebase-core.js"></script>
+<script src="../shared/platform-methods.js"></script>
+<script src="../shared/editor-platform-methods.js"></script>
+<script src="editor-firebase-service.js"></script>
+<script src="editor.js"></script>
+```
+
+## Ordre de chargement — editor_manager.html (dynamique)
+
+Géré automatiquement par l'IIFE dans `editor_manager.html` selon `?game=`.
+Ne pas charger `game-config.js` (inutile pour le manager).
 
 ---
 
 ## Créer un nouveau jeu — checklist
 
-1. Créer `monjeu/game-config.js` avec `GAME_CONFIG.game_id` unique (string) et `GAME_ID` entier unique
-2. Créer `monjeu/firebase-service.js` : `window.gameService = { ..._platformMethods, GAME_ID, /* spécifique */ }`
-3. Charger les scripts dans l'ordre ci-dessus (chemins `../shared/` depuis un sous-dossier)
-4. Ajouter le jeu dans Firestore : `games/{id}` + `game_types/{id}`
-5. Créer les familles/niveaux via l'éditeur (ou adapter `editor-firebase-service.js`)
+1. `monjeu/game-config.js` : `GAME_CONFIG.game_id` (slug unique), `GAME_ID` (entier unique)
+2. `monjeu/firebase-service.js` : `window.gameService = { ..._platformMethods, GAME_ID, … }`
+3. `monjeu/editor-firebase-service.js` : `window.editorService` avec `GAME_NAME`, `DIFFICULTIES`,
+   `createFamily`, `deleteFamily`, `createLevel`, `deleteLevel` (+ `..._editorPlatformMethods`)
+4. `monjeu/editor.html` + `editor.js` : éditeur de contenu, reçoit `?level=`, redirige
+   vers `../shared/editor_manager.html?game=monjeu` si non auth
+5. `monjeu/index.html` : lien superviseur → `../shared/editor_manager.html?game=monjeu`
+6. Firestore : créer `games/{id}` et `game_types/{id}`
 
 ## Conventions
 
-- Pas de build system, pas de modules ES6 (`import`/`export`)
-- Globaux entre fichiers : `const`/`let` top-level sont visibles dans les scripts suivants
-- Nommage services : `window.gameService` (jeu), `window.editorService` (éditeur)
+- Pas de build system, pas de modules ES6
+- Globaux entre fichiers : `const`/`let` top-level visibles dans les scripts suivants
+- `window.gameService` sur les pages jeu, `window.editorService` sur les pages éditeur
 - Auth callback unique : `window.onAuthChanged(user)`
+- Chargement dynamique (editor_manager) : tester `if (_authResolved) window.onAuthChanged(_currentUser)` après avoir défini le callback
 - Version bump dans `index.js` et `game.js` à chaque push (`const VERSION`)
