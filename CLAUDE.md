@@ -155,19 +155,66 @@ Gestion accès niveaux par le superviseur.
 
 **game_id : `3` — slug : `'calcnplay'`** — jeu de calcul mental, en cours de création.
 
-### Ce qui existe déjà
+### Ce qui existe et fonctionne
+
 - `game-config.js` : `GAME_CONFIG.game_id = 'calcnplay'`, `GAME_ID = 3`
 - `firebase-service.js` : `window.gameService = { ..._platformMethods, GAME_ID:3 }` (stub)
 - `editor-firebase-service.js` : `window.editorService` complet pour le manager
-  (createFamily/deleteFamily sans sous-collection, createLevel avec champs `rules:null`,
-  DIFFICULTIES, GAME_NAME:'CalcNPlay')
-- `index.html` + `index.js` : copie CliConVocabulary, à adapter
-- `game.html` + `game.js` : copie CliConVocabulary, à réécrire pour le calcul mental
+- `formats.json` : 5 formats de question prédéfinis (voir ci-dessous)
+- `editor.html` + `editor.js` + `editor.css` : éditeur de niveaux complet
+
+### editor.html — éditeur de niveaux CalcNPlay
+
+Layout 2 colonnes. Reçoit `?level=` depuis le manager. Sauvegarde dans `level.rules`.
+
+**Colonne gauche — réglages :**
+- Mode toggle : `computed` (calculé par ordi) ou `list` (liste prédéfinie)
+- Mode computed : opérandes `a` et `b` avec `{min, max, coef}`, opérateurs cochés +−×÷,
+  contrainte résultat `{min, max}`, sélection de format
+- Mode list : tableau question/réponse éditable
+
+**Logique de génération (mode computed) :**
+| Op | Affichée | Réponse |
+|----|----------|---------|
+| +  | a + b    | a+b     |
+| −  | (a+b) − b | a     |
+| ×  | a × b    | a×b     |
+| ÷  | (a×b) ÷ b | a     |
+
+**Colonne droite :**
+- Liste d'exemples générés (10/20/50/100) — respecte le format choisi
+- Zone de test interactive : activation au clic, saisie chiffre par chiffre, validation auto
+
+### formats.json
+
+Templates avec variables `{op1}`, `{op2}`, `{op}`, `{result}`, `{?}` (élément caché).
+Chaque format a : `id`, `label`, `template`, `placeholder_display` (?/...), `answer_key` (result/op1/op2).
+
+5 formats : résultat inconnu, 1er/2e terme inconnu (style `?`), 1er/2e terme inconnu (style `...`).
+
+### Structure rules dans Firestore (champ `rules` sur le doc level)
+
+```js
+// mode computed
+{
+  mode: 'computed',
+  computed: {
+    a: { min:1, max:10, coef:1 },
+    b: { min:1, max:10, coef:1 },
+    operators: ['+', '-'],       // opérateurs actifs
+    result: { min:null, max:null },
+    format_id: 'default',
+  },
+  list: { questions: [] },
+}
+// mode list
+{ mode: 'list', computed: {...}, list: { questions: [{q:'12+5', a:'17'}] } }
+```
 
 ### Ce qui reste à créer
-- `editor.html` + `editor.js` : éditeur de règles calcul (reçoit `?level=` depuis manager)
-- Réécrire `game.js` pour la logique calcul mental
-- Adapter `index.js` (supprimer refs vocab, modes calcul)
+- `game.js` : logique jeu calcul mental (réécrire depuis zéro)
+- `index.js` : adapter (supprimer refs vocab, définir modes calcul)
+- `index.html` : à adapter (modes de jeu calcul)
 
 ---
 
