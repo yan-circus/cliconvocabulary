@@ -8,6 +8,7 @@ const _state = {
   selectedFamily: null,
   levels:         [],
   level:          null,
+  difficulties:   [],
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -38,21 +39,32 @@ if (_authResolved) window.onAuthChanged(_currentUser);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-function _initManager() {
+async function _initManager() {
   const gameName = editorService.GAME_NAME || _GAME;
   document.getElementById('page-title').textContent = gameName + ' — Éditeur';
   document.title = gameName + ' — Éditeur';
   document.getElementById('home-link').href = '../' + _GAME + '/index.html';
 
-  const diffSel = document.getElementById('new-level-diff');
-  diffSel.innerHTML = '';
-  (editorService.DIFFICULTIES || []).forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.id; opt.textContent = d.label;
-    diffSel.appendChild(opt);
-  });
+  _state.difficulties = await editorService.getDifficulties().catch(() => []);
+  _populateDiffSelect('new-level-diff', []);
 
   _loadBrowser();
+}
+
+function _populateDiffSelect(selectId, selectedUuids) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = '';
+  _state.difficulties.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.docId;
+    opt.textContent = d.name;
+    opt.selected = selectedUuids.includes(d.docId);
+    sel.appendChild(opt);
+  });
+}
+
+function _readDiffSelect(selectId) {
+  return [...document.getElementById(selectId).selectedOptions].map(o => o.value);
 }
 
 // ── Browser ───────────────────────────────────────────────────────────────────
@@ -106,12 +118,14 @@ function _renderLevelGrid() {
   const grid = document.getElementById('level-grid');
   grid.innerHTML = '';
   _state.levels.forEach(lvl => {
-    const diff = (editorService.DIFFICULTIES || []).find(d => d.id === lvl.difficulty);
+    const diffLabels = (lvl.difficulties || [])
+      .map(uid => _state.difficulties.find(d => d.docId === uid)?.name)
+      .filter(Boolean).join(', ');
     const card = document.createElement('div');
     card.className = 'level-card';
     card.innerHTML = `
       <div class="level-card-title">${esc(lvl.title || lvl.name)}</div>
-      <div class="level-card-diff">${diff ? diff.label : '—'}</div>
+      <div class="level-card-diff">${diffLabels || '—'}</div>
       ${lvl.notes ? `<div class="level-card-notes">${esc(lvl.notes)}</div>` : ''}
       ${lvl.valid ? '<div class="level-card-valid">✓ Valide</div>' : ''}
       <div class="level-card-actions">
@@ -149,8 +163,7 @@ async function _confirmDeleteLevel(lvl) {
 function _openNewLevelModal() {
   if (!_state.selectedFamily) { alert('Sélectionnez d\'abord une famille.'); return; }
   document.getElementById('new-level-name').value  = '';
-  document.getElementById('new-level-diff').value  =
-    String(editorService.DIFFICULTIES?.[0]?.id ?? 1);
+  _populateDiffSelect('new-level-diff', []);
   document.getElementById('new-level-notes').value = '';
   showErr('modal-error', '');
   showModal('new-level-modal');
@@ -159,15 +172,15 @@ function _openNewLevelModal() {
 
 async function _handleCreateLevel(e) {
   e.preventDefault();
-  const name  = document.getElementById('new-level-name').value.trim();
-  const diff  = parseInt(document.getElementById('new-level-diff').value);
-  const notes = document.getElementById('new-level-notes').value.trim();
+  const name   = document.getElementById('new-level-name').value.trim();
+  const diffs  = _readDiffSelect('new-level-diff');
+  const notes  = document.getElementById('new-level-notes').value.trim();
   if (!name) { showErr('modal-error', 'Le nom est obligatoire.'); return; }
   const btn = document.getElementById('create-level-btn');
   setLoading(btn, true);
   try {
     const fam = _state.selectedFamily;
-    await editorService.createLevel(fam.id, fam.uuid, name, diff, notes);
+    await editorService.createLevel(fam.id, fam.uuid, name, diffs, notes);
     hideModal('new-level-modal');
     _state.levels = await editorService.getLevels(fam.id);
     _renderLevelGrid();
@@ -198,14 +211,7 @@ function _openMeta(lvl) {
     famSel.appendChild(opt);
   });
 
-  const diffSel = document.getElementById('meta-diff');
-  diffSel.innerHTML = '';
-  (editorService.DIFFICULTIES || []).forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.id; opt.textContent = d.label;
-    if (d.id === lvl.difficulty) opt.selected = true;
-    diffSel.appendChild(opt);
-  });
+  _populateDiffSelect('meta-diff', lvl.difficulties || []);
 
   document.getElementById('level-meta-panel').style.display = 'flex';
 }
@@ -215,13 +221,13 @@ async function _handleSaveMeta() {
   const name = document.getElementById('meta-name').value.trim();
   if (!name) { showErr('meta-error', 'Le nom est obligatoire.'); return; }
   const famDocId = document.getElementById('meta-family').value;
-  const diff     = parseInt(document.getElementById('meta-diff').value);
+  const diffs    = _readDiffSelect('meta-diff');
   const notes    = document.getElementById('meta-notes').value;
   const newFam   = _state.families.find(f => f.docId === famDocId);
 
   setLoading(btn, true);
   try {
-    const updates = { name, title: name, difficulty: diff, notes };
+    const updates = { name, title: name, difficulties: diffs, notes };
     if (newFam && Number(newFam.id) !== Number(_state.level.family_id)) {
       updates.family_id   = Number(newFam.id);
       updates.family_uuid = newFam.uuid;

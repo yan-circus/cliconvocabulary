@@ -120,6 +120,11 @@ const _platformMethods = {
       .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   },
 
+  getDifficulties: async () => {
+    const snap = await db.collection('level_difficulties').orderBy('order').get();
+    return snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+  },
+
   // ── Progress & scores ────────────────────────────────────────────────────────
   // These use GAME_CONFIG.game_id (string slug) — only called from game pages
   // where game-config.js is loaded.

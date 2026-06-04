@@ -6,30 +6,31 @@ const GAME_CONFIG = {
 
   // Mode metadata — used by shared/index.js
   modes: [
-    { slug: 'learning',    id: 0, icon: '📖', label: 'Apprentissage',   chrono_s: null, audio_required: false, score_tracking: false },
-    { slug: 'findword',    id: 1, icon: '👆', label: 'Find the word',   chrono_s: 8,    audio_required: false, score_tracking: true  },
-    { slug: 'chooseword',  id: 2, icon: '🔤', label: 'Choose the word', chrono_s: 5,    audio_required: false, score_tracking: true  },
-    { slug: 'typeword',    id: 3, icon: '⌨',  label: 'Type the word',   chrono_s: 20,   audio_required: false, score_tracking: true  },
-    { slug: 'listenclick', id: 4, icon: '🔊', label: 'Listen & click',  chrono_s: 5,    audio_required: true,  score_tracking: true  },
+    { slug: 'learning',    id: 0, icon: '📖', label: 'Apprentissage',
+      speed_levels: [{ level: 0, label: 'Sans chrono', seconds: 0 }],
+      audio_required: false, score_tracking: false },
+    { slug: 'findword',    id: 1, icon: '👆', label: 'Find the word',
+      speed_levels: [{ level: 0, label: 'Sans chrono', seconds: 0 }, { level: 1, label: 'Chrono', seconds: 8 }],
+      audio_required: false, score_tracking: true  },
+    { slug: 'chooseword',  id: 2, icon: '🔤', label: 'Choose the word',
+      speed_levels: [{ level: 0, label: 'Sans chrono', seconds: 0 }, { level: 1, label: 'Chrono', seconds: 5 }],
+      audio_required: false, score_tracking: true  },
+    { slug: 'typeword',    id: 3, icon: '⌨',  label: 'Type the word',
+      speed_levels: [{ level: 0, label: 'Sans chrono', seconds: 0 }, { level: 1, label: 'Chrono', seconds: 20 }],
+      audio_required: false, score_tracking: true  },
+    { slug: 'listenclick', id: 4, icon: '🔊', label: 'Listen & click',
+      speed_levels: [{ level: 0, label: 'Sans chrono', seconds: 0 }, { level: 1, label: 'Chrono', seconds: 5 }],
+      audio_required: true,  score_tracking: true  },
   ],
 
   // Backward compat — used by game.js
   game_types: { learning: 0, findword: 1, chooseword: 2, typeword: 3, listenclick: 4 },
-  chrono_s:   { findword: 8, chooseword: 5, typeword: 20, listenclick: 5 },
 
   score3_per_question: 500,
 
-  difficulties: [
-    { id: 1, label: 'Débutant'      },
-    { id: 2, label: 'Élémentaire'   },
-    { id: 3, label: 'Intermédiaire' },
-    { id: 4, label: 'Difficile'     },
-  ],
-
   ui: {
-    level_display:  'thumbnail',  // 'thumbnail' | 'list'
+    level_display:  'thumbnail',
     audio:          true,
-    chrono:         true,
     difficulty:     false,
     access_control: true,
     item_label:     'mot',

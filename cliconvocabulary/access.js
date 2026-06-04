@@ -1,14 +1,13 @@
 // access.js — Supervisor level access management
 
-const DIFFICULTIES = GAME_CONFIG.difficulties;
-
+let difficulties      = [];   // fetched from Firestore level_difficulties
 let families          = [];
 let allLevels         = [];
 let players           = [];   // non-supervisor profiles
 let supervisorId      = null;
 let showLocked        = true;
 let selectedFamilyDocId = null;
-let selectedDiff      = null; // null = all, or difficulty id (integer)
+let selectedDiff      = null; // null = all, or difficulty uuid (string)
 let deniedMap         = {};   // profileId -> Set<levelDocId>
 
 // ── Auth gate ─────────────────────────────────────────────────────────────────
@@ -27,11 +26,13 @@ window.onAuthChanged = async (user) => {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [profilesRaw, fams, levels] = await Promise.all([
+  const [profilesRaw, fams, levels, diffs] = await Promise.all([
     gameService.getProfiles(),
     gameService.getFamilies(),
     gameService.getAllLevels(),
+    gameService.getDifficulties().catch(e => { console.warn('[getDifficulties]', e); return []; }),
   ]);
+  difficulties = diffs;
 
   const supervisor = profilesRaw.find(p => p.is_supervisor);
   if (!supervisor) { location.href = 'index.html'; return; }
@@ -80,7 +81,7 @@ function famLevels() {
 
 function viewLevels() {
   const fl = famLevels();
-  return selectedDiff !== null ? fl.filter(l => l.difficulty === selectedDiff) : fl;
+  return selectedDiff !== null ? fl.filter(l => (l.difficulties || []).includes(selectedDiff)) : fl;
 }
 
 function isAllowed(profileId, levelDocId) {
@@ -116,15 +117,16 @@ function renderFamilyTabs() {
 function renderControls() {
   const ctrl = document.getElementById('controls');
   const fl   = famLevels();
-  const diffs = [...new Set(fl.map(l => l.difficulty).filter(d => d != null))].sort((a, b) => a - b);
+  // Difficultés présentes dans les niveaux de cette famille, dans l'ordre Firestore
+  const diffIds  = [...new Set(fl.flatMap(l => l.difficulties || []))];
+  const diffs    = difficulties.filter(d => diffIds.includes(d.docId));
 
   let html = '';
   if (diffs.length) {
     html += `<span class="access-controls-label">Difficulté :</span>`;
     html += `<button class="access-diff-chip${selectedDiff === null ? ' active' : ''}" data-diff="">Tout</button>`;
-    diffs.forEach(dId => {
-      const d = DIFFICULTIES.find(x => x.id === dId);
-      html += `<button class="access-diff-chip${selectedDiff === dId ? ' active' : ''}" data-diff="${dId}">${esc(d?.label || dId)}</button>`;
+    diffs.forEach(d => {
+      html += `<button class="access-diff-chip${selectedDiff === d.docId ? ' active' : ''}" data-diff="${esc(d.docId)}">${esc(d.name)}</button>`;
     });
   }
   html += `<button class="access-bulk-all-btn access-bulk-right" id="bulk-all-check">✓ Tout autoriser</button>`;
@@ -134,7 +136,7 @@ function renderControls() {
 
   ctrl.querySelectorAll('.access-diff-chip').forEach(btn => {
     btn.addEventListener('click', () => {
-      selectedDiff = btn.dataset.diff ? Number(btn.dataset.diff) : null;
+      selectedDiff = btn.dataset.diff || null;
       renderControls();
       renderMatrix();
     });

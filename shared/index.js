@@ -2,7 +2,7 @@
 // Requires: game-config.js (GAME_CONFIG), firebase-core.js,
 //           platform-methods.js, firebase-service.js (GAME_ID, gameService)
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 console.log(`%c${GAME_CONFIG.name} [index] ${VERSION}`, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const _pfx  = GAME_CONFIG.game_id + '-';
@@ -23,11 +23,12 @@ const _SVG_GOOGLE  = `<svg width="18" height="18" viewBox="0 0 18 18"><path d="M
   const s = document.createElement('style');
   s.textContent = `
 .mode-label-single{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border-radius:20px;color:#fff;font-size:13px;font-weight:700;padding:0 12px;height:32px}
-.difficulty-bar{display:flex;align-items:center;gap:6px;padding:4px 14px 8px;overflow-x:auto;scrollbar-width:none}
-.difficulty-bar::-webkit-scrollbar{display:none}
-.diff-chip{padding:4px 12px;border-radius:20px;border:none;background:rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
-.diff-chip:hover{background:rgba(255,255,255,.35);color:#fff}
-.diff-chip.active{background:#fff;color:#333}
+.speed-selector{display:flex;align-items:center}
+.speed-chips{display:flex;gap:4px;align-items:center}
+.speed-chip{min-width:26px;height:26px;padding:0 6px;border-radius:13px;border:none;background:rgba(255,255,255,.2);color:rgba(255,255,255,.75);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.speed-chip:hover{background:rgba(255,255,255,.35);color:#fff}
+.speed-chip.active{background:#fff;color:#333}
+.speed-chip-off{opacity:.6}
 .level-grid.list-mode{grid-template-columns:1fr;gap:6px}
 .level-list-item{background:rgba(255,255,255,.92);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;position:relative;border:2px solid transparent;transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .level-list-item:hover{transform:translateX(3px);box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -65,14 +66,7 @@ function _buildAppHTML() {
       </div>
     </div>` : `<div class="mode-label-single"><span>${first.icon}</span><span>${esc(first.label)}</span></div>`;
 
-  const chronoHtml = _ui.chrono ? `<button id="chrono-toggle" class="chrono-header-btn" title="Chrono">⏱</button>` : '';
-  const audioHtml  = _ui.audio  ? `<button id="audio-toggle"  class="chrono-header-btn" title="Audio">${_SVG_AUDIO}</button>` : '';
-
-  const diffBarHtml = _ui.difficulty ? `
-    <div id="difficulty-bar" class="difficulty-bar">
-      <button class="diff-chip active" data-diff="0">Tous</button>
-      ${GAME_CONFIG.difficulties.map(d => `<button class="diff-chip" data-diff="${d.id}">${esc(d.label)}</button>`).join('')}
-    </div>` : '';
+  const audioHtml = _ui.audio ? `<button id="audio-toggle" class="chrono-header-btn" title="Audio">${_SVG_AUDIO}</button>` : '';
 
   const accessLink = _ui.access_control
     ? `<a id="access-btn" href="access.html" class="supervisor-option">🔓 Niveaux autorisés</a>` : '';
@@ -89,7 +83,7 @@ function _buildAppHTML() {
     <div class="header-row">
       <div class="header-left">
         ${modeMenuHtml}
-        ${chronoHtml}
+        <div id="speed-selector" class="speed-selector"></div>
         ${audioHtml}
       </div>
       <div class="header-right">
@@ -106,7 +100,6 @@ function _buildAppHTML() {
         <button id="close-btn" class="icon-btn" title="Fermer">✕</button>
       </div>
     </div>
-    ${diffBarHtml}
     <div id="family-tabs-scroll" class="family-tabs-scroll"></div>
   </header>
 
@@ -291,7 +284,7 @@ const state = {
   progress:               { best_scores: {} },
 };
 
-let chronoEnabled = localStorage.getItem(_pfx + 'chrono') === '1';
+let selectedSpeed = parseInt(localStorage.getItem(_pfx + 'speed') || '0');
 let audioEnabled  = !_ui.audio ? false : localStorage.getItem(_pfx + 'audio') !== '0';
 
 // ── Score modes (derived from GAME_CONFIG) ────────────────────────────────────
@@ -727,14 +720,20 @@ function authErrorMsg(err) {
 // ── Families ──────────────────────────────────────────────────────────────────
 
 async function init() {
-  state.families = await gameService.getFamilies();
-  renderFamilyTabs();
-  if (state.families.length > 0) {
-    const savedFamId = localStorage.getItem(_pfx + 'family-id');
-    const fam = state.families.find(f => String(f.docId) === savedFamId) || state.families[0];
-    await selectFamily(fam);
-  } else {
-    document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Aucune famille disponible.</div>';
+  try {
+    state.families = await gameService.getFamilies();
+
+    renderFamilyTabs();
+    if (state.families.length > 0) {
+      const savedFamId = localStorage.getItem(_pfx + 'family-id');
+      const fam = state.families.find(f => String(f.docId) === savedFamId) || state.families[0];
+      await selectFamily(fam);
+    } else {
+      document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Aucune famille disponible.</div>';
+    }
+  } catch(e) {
+    console.error('[init]', e);
+    document.getElementById('level-grid').innerHTML = '<div class="loading-msg">Erreur de chargement.</div>';
   }
 }
 
@@ -929,19 +928,6 @@ async function selectFamily(fam) {
 
 // ── Difficulty filter ─────────────────────────────────────────────────────────
 
-let selectedDifficulty = 0;
-
-if (_ui.difficulty) {
-  document.getElementById('difficulty-bar').addEventListener('click', e => {
-    const chip = e.target.closest('.diff-chip');
-    if (!chip) return;
-    selectedDifficulty = parseInt(chip.dataset.diff);
-    document.querySelectorAll('.diff-chip').forEach(c =>
-      c.classList.toggle('active', parseInt(c.dataset.diff) === selectedDifficulty)
-    );
-    renderLevelGrid();
-  });
-}
 
 // ── Levels ────────────────────────────────────────────────────────────────────
 
@@ -963,9 +949,6 @@ function _showLockedLevels() {
   return sup?.show_locked_levels ?? true;
 }
 
-function _diffLabel(id) {
-  return GAME_CONFIG.difficulties.find(d => d.id === id)?.label || '';
-}
 
 function renderLevelGrid() {
   const grid = document.getElementById('level-grid');
@@ -977,7 +960,6 @@ function renderLevelGrid() {
   const visible = state.levels.filter(lvl => {
     if (lvl.valid === false) return false;
     if (_isDenied(lvl) && !showLocked) return false;
-    if (selectedDifficulty > 0 && lvl.difficulty !== selectedDifficulty) return false;
     return true;
   });
 
@@ -1027,8 +1009,7 @@ function _renderLevelCard(grid, lvl, denied, noAudio, isSelected) {
 function _renderLevelListItem(grid, lvl, denied, noAudio, isSelected) {
   const item = document.createElement('div');
   item.className = `level-list-item${isSelected ? ' selected' : ''}${denied || noAudio ? ' level-locked' : ''}`;
-  const diffBadge = lvl.difficulty && _ui.difficulty
-    ? `<span class="level-list-diff">${esc(_diffLabel(lvl.difficulty))}</span>` : '';
+  const diffBadge = '';
   const notesHtml = lvl.notes ? `<div class="level-list-notes">${esc(lvl.notes)}</div>` : '';
 
   item.innerHTML = `
@@ -1109,6 +1090,7 @@ function updateModeBtn() {
       el.classList.toggle('hidden', !audioEnabled)
     );
   }
+  renderSpeedSelector();
 }
 
 if (MODES.length > 1) {
@@ -1132,13 +1114,45 @@ if (MODES.length > 1) {
   });
 }
 
-if (_ui.chrono) {
-  document.getElementById('chrono-toggle').addEventListener('click', () => {
-    chronoEnabled = !chronoEnabled;
-    localStorage.setItem(_pfx + 'chrono', chronoEnabled ? '1' : '0');
-    document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
-  });
+function renderSpeedSelector() {
+  const container = document.getElementById('speed-selector');
+  if (!container) return;
+  const mode = MODES.find(m => m.slug === selectedMode) || MODES[0];
+  const sl   = mode.speed_levels || [];
+
+  // Clamp selectedSpeed si le mode courant a moins d'états
+  const maxLevel = sl.length ? sl[sl.length - 1].level : 0;
+  if (selectedSpeed > maxLevel) {
+    selectedSpeed = 0;
+    localStorage.setItem(_pfx + 'speed', '0');
+  }
+
+  if (sl.length <= 1) { container.innerHTML = ''; return; }
+
+  if (sl.length === 2) {
+    const on = selectedSpeed > 0;
+    container.innerHTML = `<button id="speed-toggle" class="chrono-header-btn${on ? ' on' : ''}" title="${esc(on ? sl[1].label : sl[0].label)}">⏱</button>`;
+    container.querySelector('#speed-toggle').addEventListener('click', () => {
+      selectedSpeed = selectedSpeed > 0 ? 0 : 1;
+      localStorage.setItem(_pfx + 'speed', String(selectedSpeed));
+      renderSpeedSelector();
+    });
+  } else {
+    container.innerHTML = `<div class="speed-chips">` +
+      sl.map(s =>
+        `<button class="speed-chip${s.level === 0 ? ' speed-chip-off' : ''}${s.level === selectedSpeed ? ' active' : ''}" data-level="${s.level}" title="${esc(s.label)}">${s.level}</button>`
+      ).join('') +
+      `</div>`;
+    container.querySelectorAll('.speed-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedSpeed = parseInt(btn.dataset.level);
+        localStorage.setItem(_pfx + 'speed', String(selectedSpeed));
+        renderSpeedSelector();
+      });
+    });
+  }
 }
+
 
 if (_ui.audio) {
   document.getElementById('audio-toggle').addEventListener('click', () => {
@@ -1150,9 +1164,8 @@ if (_ui.audio) {
   });
 }
 
-updateModeBtn();
-if (_ui.chrono) document.getElementById('chrono-toggle').classList.toggle('on', chronoEnabled);
-if (_ui.audio)  document.getElementById('audio-toggle').classList.toggle('on', audioEnabled);
+updateModeBtn(); // appelle renderSpeedSelector()
+if (_ui.audio) document.getElementById('audio-toggle').classList.toggle('on', audioEnabled);
 
 // ── Score panel ───────────────────────────────────────────────────────────────
 
@@ -1298,10 +1311,13 @@ function launchGame(mode) {
     showToast('🔊 Active le son pour jouer en mode ' + (currentMode?.label || mode));
     return;
   }
+  const modeObj  = MODES.find(m => m.slug === mode);
+  const speedObj = (modeObj?.speed_levels || []).find(s => s.level === selectedSpeed) || { level: 0, seconds: 0 };
   const p = new URLSearchParams({
     level:   state.selectedLevel.docId,
     mode,
-    chrono:  chronoEnabled ? '1' : '0',
+    speed:   selectedSpeed,
+    seconds: speedObj.seconds,
     avatar:  profileAvatarId,
     player:  currentProfileData?.prenom || '',
     profile: currentProfileId || '',

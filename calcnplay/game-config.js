@@ -6,28 +6,27 @@ const GAME_CONFIG = {
 
   // Mode metadata — used by shared/index.js
   modes: [
-    { slug: 'calcul', id: 0, icon: '🧮', label: 'Calcul mental', chrono_s: 10, audio_required: false, score_tracking: true },
+    { slug: 'calcul', id: 0, icon: '🧮', label: 'Calcul mental',
+      speed_levels: [
+        { level: 0, label: 'Sans chrono', seconds: 0  },
+        { level: 1, label: 'Très lent',   seconds: 15 },
+        { level: 2, label: 'Lent',        seconds: 10 },
+        { level: 3, label: 'Normal',      seconds: 7  },
+        { level: 4, label: 'Rapide',      seconds: 5  },
+        { level: 5, label: 'Très rapide', seconds: 3  },
+      ],
+      audio_required: false, score_tracking: true },
   ],
 
   // Backward compat — used by game.js
   game_types: { calcul: 0 },
-  chrono_s:   { calcul: 10 },
 
   score3_per_question: 500,
 
-  difficulties: [
-    { id: 1, label: 'CP'  },
-    { id: 2, label: 'CE1' },
-    { id: 3, label: 'CE2' },
-    { id: 4, label: 'CM1' },
-    { id: 5, label: 'CM2' },
-  ],
-
   ui: {
-    level_display:  'list',   // 'thumbnail' | 'list'
+    level_display:  'thumbnail',
     audio:          false,
-    chrono:         true,
-    difficulty:     true,
+    difficulty:     false,
     access_control: false,
     item_label:     'question',
   },

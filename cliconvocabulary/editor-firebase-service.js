@@ -6,17 +6,9 @@ const GAME_ID = 2;
 // Storage initialisé à la demande (pas chargé dans editor_manager.html)
 const _storage = () => firebase.storage();
 
-const DIFFICULTIES = [
-  { id: 1, label: 'Débutant'      },
-  { id: 2, label: 'Élémentaire'   },
-  { id: 3, label: 'Intermédiaire' },
-  { id: 4, label: 'Difficile'     },
-];
-
 window.editorService = {
   ..._platformMethods,
   ..._editorPlatformMethods,
-  DIFFICULTIES,
   GAME_ID,
   GAME_NAME: 'CliConVocabulary',
 
@@ -60,7 +52,7 @@ window.editorService = {
 
   // ── Levels ────────────────────────────────────────────────────────────────
 
-  createLevel: async (familyId, familyUuid, name, difficulty, notes = '') => {
+  createLevel: async (familyId, familyUuid, name, difficulties = [], notes = '') => {
     const newId = await _editorNextLevelId();
     const now   = new Date().toISOString();
     const data  = {
@@ -71,7 +63,7 @@ window.editorService = {
       family_uuid:         familyUuid,
       name,
       title:               name,
-      difficulty,
+      difficulties:        Array.isArray(difficulties) ? difficulties : [],
       notes:               notes || '',
       image_path:          '',
       marker_size:         16,

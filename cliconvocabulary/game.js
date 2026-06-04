@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.3.9';
+const VERSION = 'v0.4.0';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -7,7 +7,9 @@ console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-wei
 const params      = new URLSearchParams(location.search);
 const LEVEL_ID    = params.get('level');
 const MODE        = params.get('mode')    || 'findword';
-const CHRONO      = params.get('chrono')  === '1';
+const SPEED       = parseInt(params.get('speed') || '0');
+const SECONDS     = parseFloat(params.get('seconds') || '0');
+const CHRONO      = SPEED > 0;
 const AUDIO       = params.get('audio')   !== '0';
 const AVATAR      = parseInt(params.get('avatar') || '1', 10);
 const PLAYER      = params.get('player')  || '';
@@ -25,7 +27,7 @@ if (!LEVEL_ID) location.href = 'index.html';
 // ── Constants (spec: principe_scores4cliconvocabulary.md) ─────────────────────
 
 const MAX_LIVES            = 3;
-const TIME_LIMIT           = GAME_CONFIG.chrono_s[MODE] ?? 8; // seconds per question (chrono mode)
+const TIME_LIMIT           = SECONDS || GAME_CONFIG.modes.find(m => m.slug === MODE)?.speed_levels?.find(s => s.level === SPEED)?.seconds || 8;
 const SCORE_MIN            = 100;    // points for slowest correct answer
 const SCORE_MAX            = 1000;   // points for instant correct answer
 const FEEDBACK_DELAY_OK    = 700;    // ms before next question after correct
