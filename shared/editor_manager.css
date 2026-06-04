@@ -216,11 +216,10 @@ body {
 }
 
 .level-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   overflow-y: auto;
-  align-content: start;
   flex: 1;
   padding-bottom: 8px;
 }
@@ -228,11 +227,12 @@ body {
 .level-card {
   background: var(--surface);
   border-radius: 10px;
-  padding: 14px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   transition: border-color .15s;
 }
 .level-card:hover { border-color: var(--accent); }
@@ -240,6 +240,7 @@ body {
 .level-card-title {
   font-weight: 600;
   font-size: 13px;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -247,6 +248,7 @@ body {
 .level-card-diff {
   font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 .level-card-notes {
   font-size: 11px;
@@ -254,15 +256,18 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
 }
 .level-card-valid {
   font-size: 11px;
   color: var(--success);
+  white-space: nowrap;
 }
 .level-card-actions {
   display: flex;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .level-card-new {
@@ -273,7 +278,7 @@ body {
   cursor: pointer;
   color: var(--text-muted);
   font-size: 13px;
-  min-height: 100px;
+  min-height: 44px;
   transition: border-color .15s, color .15s;
 }
 .level-card-new:hover { border-color: var(--primary); color: var(--accent); }

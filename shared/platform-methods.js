@@ -100,7 +100,8 @@ const _platformMethods = {
     const snap = await db.collection('levels')
       .where('game_id', '==', GAME_ID)
       .where('family_id', '==', Number(familyId)).get();
-    return snap.docs.map(d => ({ docId: d.id, ...d.data() })).sort((a, b) => a.id - b.id);
+    return snap.docs.map(d => ({ docId: d.id, ...d.data() }))
+      .sort((a, b) => (a.order !== undefined ? a.order : a.id) - (b.order !== undefined ? b.order : b.id));
   },
 
   getLevelById: async (levelDocId) => {

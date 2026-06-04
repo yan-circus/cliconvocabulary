@@ -2,7 +2,7 @@
 // Requires: game-config.js (GAME_CONFIG), firebase-core.js,
 //           platform-methods.js, firebase-service.js (GAME_ID, gameService)
 
-const VERSION = 'v1.2.0';
+const VERSION = 'v1.3.0';
 console.log(`%c${GAME_CONFIG.name} [index] ${VERSION}`, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const _pfx  = GAME_CONFIG.game_id + '-';

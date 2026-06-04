@@ -117,26 +117,32 @@ async function _selectFamily(fam) {
 function _renderLevelGrid() {
   const grid = document.getElementById('level-grid');
   grid.innerHTML = '';
-  _state.levels.forEach(lvl => {
+  _state.levels.forEach((lvl, i) => {
     const diffLabels = (lvl.difficulties || [])
       .map(uid => _state.difficulties.find(d => d.docId === uid)?.name)
       .filter(Boolean).join(', ');
     const card = document.createElement('div');
     card.className = 'level-card';
+    const isFirst = i === 0;
+    const isLast  = i === _state.levels.length - 1;
     card.innerHTML = `
       <div class="level-card-title">${esc(lvl.title || lvl.name)}</div>
       <div class="level-card-diff">${diffLabels || '—'}</div>
       ${lvl.notes ? `<div class="level-card-notes">${esc(lvl.notes)}</div>` : ''}
       ${lvl.valid ? '<div class="level-card-valid">✓ Valide</div>' : ''}
       <div class="level-card-actions">
+        <button class="btn btn-sm btn-secondary" title="Monter" ${isFirst ? 'disabled' : ''}>▲</button>
+        <button class="btn btn-sm btn-secondary" title="Descendre" ${isLast ? 'disabled' : ''}>▼</button>
         <button class="btn btn-sm btn-primary">Éditer</button>
         <button class="btn btn-sm btn-secondary" title="Dupliquer">⧉</button>
         <button class="btn btn-sm btn-danger">✕</button>
       </div>
     `;
-    card.querySelectorAll('.btn')[0].addEventListener('click', () => _openMeta(lvl));
-    card.querySelectorAll('.btn')[1].addEventListener('click', () => _duplicateLevel(lvl));
-    card.querySelectorAll('.btn')[2].addEventListener('click', () => _confirmDeleteLevel(lvl));
+    card.querySelectorAll('.btn')[0].addEventListener('click', () => _moveLevel(lvl, 'up'));
+    card.querySelectorAll('.btn')[1].addEventListener('click', () => _moveLevel(lvl, 'down'));
+    card.querySelectorAll('.btn')[2].addEventListener('click', () => _openMeta(lvl));
+    card.querySelectorAll('.btn')[3].addEventListener('click', () => _duplicateLevel(lvl));
+    card.querySelectorAll('.btn')[4].addEventListener('click', () => _confirmDeleteLevel(lvl));
     grid.appendChild(card);
   });
   const newCard = document.createElement('div');
@@ -164,6 +170,29 @@ async function _duplicateLevel(lvl) {
   } catch(err) {
     alert('Erreur lors de la duplication : ' + err.message);
   }
+}
+
+async function _moveLevel(lvl, dir) {
+  const levels = _state.levels;
+  const idx     = levels.findIndex(l => l.docId === lvl.docId);
+  const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= levels.length) return;
+
+  // Si certains niveaux n'ont pas encore de order, initialiser tous les niveaux
+  if (levels.some(l => l.order === undefined)) {
+    await Promise.all(levels.map((l, i) => editorService.updateLevelMeta(l.docId, { order: i })));
+    levels.forEach((l, i) => { l.order = i; });
+  }
+
+  const neighbor = levels[swapIdx];
+  const tmp = lvl.order;
+  await Promise.all([
+    editorService.updateLevelMeta(lvl.docId,      { order: neighbor.order }),
+    editorService.updateLevelMeta(neighbor.docId, { order: tmp }),
+  ]);
+
+  _state.levels = await editorService.getLevels(_state.selectedFamily.id);
+  _renderLevelGrid();
 }
 
 async function _confirmDeleteFamily(fam) {
