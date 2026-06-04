@@ -1,84 +1,497 @@
-// game.js — CalcNPlay game logic
-const VERSION = 'v0.3.9';
+// game.js — CalcNPlay
+const VERSION = 'v0.1.0';
 console.log('%cCalcNPlay ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
 
-const params      = new URLSearchParams(location.search);
-const LEVEL_ID    = params.get('level');
-const MODE        = params.get('mode')    || 'findword';
-const CHRONO      = params.get('chrono')  === '1';
-const AUDIO       = params.get('audio')   !== '0';
-const AVATAR      = parseInt(params.get('avatar') || '1', 10);
-const PLAYER      = params.get('player')  || '';
-const PROFILE_ID  = params.get('profile') || '';
-
-(function() {
-  const avatar = document.getElementById('game-avatar');
-  if (avatar) avatar.src = `assets/avatars/avatar${String(AVATAR).padStart(2, '0')}.png`;
-  const name = document.getElementById('game-player-name');
-  if (name) name.textContent = PLAYER;
-})();
+const params     = new URLSearchParams(location.search);
+const LEVEL_ID   = params.get('level');
+const MODE       = params.get('mode')     || 'calcul';
+const SPEED      = parseInt(params.get('speed')    || '0');
+const SECONDS    = parseFloat(params.get('seconds') || '0');
+const AVATAR     = parseInt(params.get('avatar')   || '1');
+const PLAYER     = params.get('player')   || '';
+const PROFILE_ID = params.get('profile')  || '';
 
 if (!LEVEL_ID) location.href = 'index.html';
 
-// ── Constants (spec: principe_scores4calcnplay.md) ─────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const MAX_LIVES            = 3;
-const TIME_LIMIT           = GAME_CONFIG.chrono_s[MODE] ?? 8; // seconds per question (chrono mode)
-const SCORE_MIN            = 100;    // points for slowest correct answer
-const SCORE_MAX            = 1000;   // points for instant correct answer
-const FEEDBACK_DELAY_OK    = 700;    // ms before next question after correct
-const FEEDBACK_DELAY_WRONG = 2500;   // ms to show correct answer after error
-const RETRY_OFFSET         = 2;      // positions later the retry is injected
+const MAX_LIVES         = 3;
+const WRONG_MS          = 1500;
+const RETRY_OFFSET      = 2;
+const PUZZLE_COUNT      = 20;
+const BG_COUNT          = 66;
+const MAX_GEN_TRIES     = 500;
+const SCORE_PER_CORRECT = 1;
+const FALL_RATIO        = 2.5;  // durée chute = seconds × FALL_RATIO
+const SPAWN_RATIO       = 1.4;
+const SPEED_ACCEL       = 0.83;
+const MIN_FALL_SECONDS  = 0.7;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let levelData         = null;
-let allWords          = [];    // words that have a point
-let score             = 0;
-let lives             = MAX_LIVES;
-let wrongCount        = 0;
-let activeIdx         = -1;
-let playQueue         = [];    // ordered list of word indices to ask
-let playPos           = 0;     // next index to consume from playQueue
-let answeredCorrectly = new Set();
-let questionStartTime = 0;
-let gameStartTime     = 0;
-let locked            = false; // blocks input during transitions
-let chronoStart       = null;
-let chronoRaf         = null;
-let _typeCleanup      = null;
-let _audioUnlocked    = false;
-let _currentAudio     = null;
+let _rules         = null;
+let _formats       = [];
+let _fmt           = null;
+
+let _lives         = MAX_LIVES;
+let _score         = 0;
+let _totalCorrect  = 0;
+let _totalWrong    = 0;
+let _cycleCorrect  = 0;
+let _gameOver      = false;
+let _inputLocked   = false;
+
+let _puzzleVisible = [];
+let _bgIndex       = 0;
+
+let _pool          = [];
+let _falling       = [];
+let _qIdSeq        = 0;
+let _activeId      = null;
+
+let _slots         = [];
+let _displayAnswer = null;  // réponse à afficher brièvement après validation
+
+let _fallSeconds   = SECONDS || 8;
+let _spawnInterval = 0;
+let _lastSpawnTime = 0;
+let _rafId         = null;
+let _lastTs        = null;
+
+let _qareaH        = 0;
+let _cardH         = 60;
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
 
-function playWordAudio(idx) {
-  if (!AUDIO || !_audioUnlocked) return;
-  const url = allWords[idx]?.audio_path;
-  if (!url) return;
-  _currentAudio = new Audio(url);
-  _currentAudio.play().catch(() => {});
+const _SND = {
+  correct:  new Audio('game_assets/sounds/cling.wav'),
+  wrong:    new Audio('game_assets/sounds/dead-bird.wav'),
+  gameover: new Audio('game_assets/sounds/gameover.wav'),
+};
+function _play(key) {
+  try { _SND[key].currentTime = 0; _SND[key].play().catch(() => {}); } catch(_) {}
 }
 
-function showStartOverlay(onStart) {
-  const overlay = document.createElement('div');
-  overlay.id = 'start-overlay';
-  overlay.innerHTML = `<button id="start-btn">▶ Commencer</button>`;
-  document.getElementById('game-body').appendChild(overlay);
-  document.getElementById('start-btn').addEventListener('click', () => {
-    overlay.remove();
-    _audioUnlocked = true;
-    onStart();
-    if (CHRONO) {
-      if (MODE === 'listenclick' && _currentAudio) {
-        _currentAudio.addEventListener('ended', () => startChrono(), { once: true });
-        _currentAudio.addEventListener('error', () => startChrono(), { once: true });
-      } else {
-        startChrono();
-      }
+// ── Question generation ───────────────────────────────────────────────────────
+
+function _randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function _round(n)          { return Math.round(n * 10000) / 10000; }
+function _num(n)            { return String(_round(n)).replace('.', ','); }
+
+function _computeQ(op, a, b) {
+  switch (op) {
+    case '+': return { op1: a,             op2: b, opSymbol: '+', result: _round(a + b) };
+    case '-': return { op1: _round(a + b), op2: b, opSymbol: '−', result: a };
+    case '*': return { op1: a,             op2: b, opSymbol: '×', result: _round(a * b) };
+    case '/': return { op1: _round(a * b), op2: b, opSymbol: '÷', result: a };
+  }
+}
+
+function _generateComputed() {
+  const c = _rules.computed;
+  if (!c.operators.length) return null;
+  for (let i = 0; i < MAX_GEN_TRIES; i++) {
+    const op = c.operators[Math.floor(Math.random() * c.operators.length)];
+    const a  = _randInt(c.a.min, c.a.max) * c.a.coef;
+    const b  = _randInt(c.b.min, c.b.max) * c.b.coef;
+    if (b === 0) continue;
+    const q = _computeQ(op, a, b);
+    if (c.result.min !== null && q.result < c.result.min) continue;
+    if (c.result.max !== null && q.result > c.result.max) continue;
+    return q;
+  }
+  return null;
+}
+
+function _renderTemplate(template, q, placeholder) {
+  return template
+    .replace('{op1}',    _num(q.op1))
+    .replace('{op2}',    _num(q.op2))
+    .replace('{op}',     q.opSymbol)
+    .replace('{result}', _num(q.result))
+    .replace('{?}',      placeholder || '?');
+}
+
+function _makeQuestion() {
+  if (_rules.mode === 'list') {
+    const qs = _rules.list.questions;
+    if (!qs.length) return null;
+    const raw = qs[_randInt(0, qs.length - 1)];
+    return { displayStr: raw.q + ' =', answerStr: String(raw.a) };
+  }
+  const q = _generateComputed();
+  if (!q) return null;
+  const answerKey  = _fmt?.answer_key || 'result';
+  const answerVal  = answerKey === 'op1' ? q.op1 : answerKey === 'op2' ? q.op2 : q.result;
+  const template   = _fmt?.template || '{op1} {op} {op2}';
+  const placeholder = _fmt?.placeholder_display || '?';
+  return {
+    displayStr: _renderTemplate(template, q, placeholder),
+    answerStr:  _num(answerVal),
+  };
+}
+
+function _fillPool(n = 40) {
+  let added = 0;
+  for (let i = 0; i < n * 5 && added < n; i++) {
+    const q = _makeQuestion();
+    if (q) { _pool.push(q); added++; }
+  }
+}
+
+function _popPool() {
+  if (_pool.length < 10) _fillPool(30);
+  return _pool.length ? _pool.shift() : null;
+}
+
+function _requeue(q) {
+  const pos = Math.min(RETRY_OFFSET, _pool.length);
+  _pool.splice(pos, 0, q);
+}
+
+// ── Slots ─────────────────────────────────────────────────────────────────────
+
+function _buildSlots(answerStr) {
+  return answerStr.split('').map(c => ({
+    char: c, isDigit: /[0-9]/.test(c), typed: null,
+  }));
+}
+function _slotsComplete() {
+  return _slots.length > 0 && _slots.every(s => !s.isDigit || s.typed !== null);
+}
+function _typedAnswer()    { return _slots.map(s => s.isDigit ? s.typed : s.char).join(''); }
+function _expectedAnswer() { return _slots.map(s => s.char).join(''); }
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+
+function _renderLives() {
+  const el = document.getElementById('lives-display');
+  el.innerHTML = '';
+  for (let i = 0; i < MAX_LIVES; i++) {
+    const h = document.createElement('span');
+    h.className   = 'cnp-heart' + (i >= _lives ? ' lost' : '');
+    h.textContent = '❤';
+    el.appendChild(h);
+  }
+}
+
+function _renderScore() {
+  document.getElementById('score-val').textContent = _score;
+}
+
+function _renderAnswerDisplay() {
+  const el = document.getElementById('answer-display');
+  if (_displayAnswer !== null) { el.textContent = _displayAnswer; return; }
+  if (!_slots.length) { el.textContent = ''; return; }
+  el.textContent = _slots.map(s => !s.isDigit ? s.char : (s.typed ?? '-')).join('');
+}
+
+// ── Question layer bounds ─────────────────────────────────────────────────────
+
+function _updateQLayerBounds() {
+  const header = document.getElementById('game-header');
+  const numpad = document.getElementById('numpad');
+  const hh     = header.offsetHeight;
+  const nh     = numpad.offsetHeight;
+  const layer  = document.getElementById('question-layer');
+  layer.style.top    = hh + 'px';
+  layer.style.bottom = nh + 'px';
+  _qareaH = window.innerHeight - hh - nh;
+}
+
+function _cardEl(id) { return document.getElementById('qcard-' + id); }
+
+// ── Puzzle ────────────────────────────────────────────────────────────────────
+
+function _initPuzzleLayer() {
+  const layer = document.getElementById('puzzle-layer');
+  layer.innerHTML = '';
+  for (let i = 1; i <= PUZZLE_COUNT; i++) {
+    const img = document.createElement('img');
+    img.id  = 'piece-' + i;
+    img.src = `game_assets/puzzle/P${i}.png`;
+    img.style.opacity = '1';
+    layer.appendChild(img);
+  }
+  _puzzleVisible = Array.from({length: PUZZLE_COUNT}, (_, i) => i + 1);
+}
+
+function _newPuzzleCycle(first = false) {
+  _cycleCorrect = 0;
+  _bgIndex = _randInt(1, BG_COUNT);
+  const pad = String(_bgIndex).padStart(3, '0');
+  document.getElementById('bg-layer').style.backgroundImage =
+    `url('game_assets/backgrounds/bg_image${pad}.jpg')`;
+  _initPuzzleLayer();
+  // Accélération uniquement à partir du 2e cycle
+  if (!first && SPEED > 0) {
+    _spawnInterval = Math.max(MIN_FALL_SECONDS * 1000, _spawnInterval * SPEED_ACCEL);
+    _fallSeconds   = _spawnInterval / 1000 * FALL_RATIO;
+  }
+}
+
+function _removePuzzlePiece() {
+  if (!_puzzleVisible.length) return;
+  const idx   = _randInt(0, _puzzleVisible.length - 1);
+  const piece = _puzzleVisible.splice(idx, 1)[0];
+  const img   = document.getElementById('piece-' + piece);
+  if (img) img.style.opacity = '0';
+}
+
+// ── Spawn / active tracking ───────────────────────────────────────────────────
+
+function _spawnCard(q) {
+  const id = ++_qIdSeq;
+  const el = document.createElement('div');
+  el.id        = 'qcard-' + id;
+  el.className = 'cnp-q-card' + (SPEED === 0 ? ' static' : '');
+  el.textContent = q.displayStr;
+  document.getElementById('question-layer').appendChild(el);
+  _cardH = el.offsetHeight || 60;
+
+  if (SPEED === 0) {
+    // Centré horizontalement
+    el.style.left      = '50%';
+    el.style.transform = 'translateX(-50%)';
+  } else {
+    // Position X aléatoire dans les bornes de l'écran
+    const cardW = el.offsetWidth || 160;
+    const maxX  = Math.max(0, window.innerWidth - cardW - 8);
+    el.style.left = _randInt(8, maxX) + 'px';
+  }
+
+  const startY = SPEED === 0 ? null : -(_cardH + 10);
+  if (startY !== null) el.style.top = startY + 'px';
+  _falling.push({ id, displayStr: q.displayStr, answerStr: q.answerStr, y: startY, wrong: false });
+  _refreshActive();
+  return id;
+}
+
+function _refreshActive() {
+  let best = null;
+  for (const q of _falling) {
+    if (q.wrong) continue;
+    if (best === null || (q.y !== null && q.y > (best.y ?? -Infinity))) best = q;
+  }
+  const newId = best?.id ?? null;
+  if (newId === _activeId) return;
+
+  _falling.forEach(q => {
+    const el = _cardEl(q.id);
+    if (el) el.classList.toggle('active', q.id === newId);
+  });
+  _activeId = newId;
+
+  const active = _falling.find(q => q.id === newId);
+  if (active) {
+    _slots = _buildSlots(active.answerStr);
+  } else {
+    _slots = [];
+  }
+  _renderAnswerDisplay();
+}
+
+function _removeCard(id) {
+  const el = _cardEl(id);
+  if (el) el.remove();
+  _falling = _falling.filter(q => q.id !== id);
+}
+
+// ── Game loop ─────────────────────────────────────────────────────────────────
+
+function _startLoop() {
+  _lastTs = null;
+  _rafId  = requestAnimationFrame(_loop);
+}
+
+function _loop(ts) {
+  if (_gameOver) return;
+  if (_lastTs === null) _lastTs = ts;
+  const dt = ts - _lastTs;
+  _lastTs  = ts;
+
+  if (SPEED === 0) {
+    if (_falling.length === 0 && !_inputLocked) _spawnNext();
+    _rafId = requestAnimationFrame(_loop);
+    return;
+  }
+
+  // Spawn
+  if (ts - _lastSpawnTime > _spawnInterval) {
+    _spawnNext();
+    _lastSpawnTime = ts;
+  }
+
+  // Déplacement
+  const pxPerMs = _qareaH / (_fallSeconds * 1000);
+  for (const q of [..._falling]) {
+    if (q.wrong) continue;
+    q.y += pxPerMs * dt;
+    const el = _cardEl(q.id);
+    if (el) el.style.top = q.y + 'px';
+    if (q.y > _qareaH) {
+      _removeCard(q.id);
+      _loseLife();
+      _play('wrong');
     }
+  }
+
+  _refreshActive();
+  _rafId = requestAnimationFrame(_loop);
+}
+
+function _spawnNext() {
+  const q = _popPool();
+  if (q) _spawnCard(q);
+}
+
+// ── Input & validation ────────────────────────────────────────────────────────
+
+function _handleInput(key) {
+  if (_inputLocked || _gameOver || !_slots.length || _activeId === null) return;
+  if (!/^[0-9]$/.test(key)) return;
+  const nextSlot = _slots.find(s => s.isDigit && s.typed === null);
+  if (!nextSlot) return;
+  nextSlot.typed = key;
+  _renderAnswerDisplay();
+  if (_slotsComplete()) _validate();
+}
+
+function _validate() {
+  const typed    = _typedAnswer();
+  const expected = _expectedAnswer();
+  if (typed === expected) _onCorrect();
+  else                    _onWrong(expected);
+}
+
+function _onCorrect() {
+  const answeredText = _expectedAnswer();
+
+  _play('correct');
+  _score        += SCORE_PER_CORRECT;
+  _totalCorrect += 1;
+  _cycleCorrect += 1;
+  _renderScore();
+
+  const id = _activeId;
+  _removeCard(id);
+  _slots    = [];
+  _activeId = null;
+  _removePuzzlePiece();
+
+  // Afficher la réponse 0.5s sans bloquer
+  _displayAnswer = answeredText;
+  _renderAnswerDisplay();
+  setTimeout(() => { _displayAnswer = null; _renderAnswerDisplay(); }, 500);
+
+  if (_cycleCorrect >= PUZZLE_COUNT) _newPuzzleCycle();
+
+  if (SPEED === 0) {
+    _spawnNext();
+    _refreshActive();
+  }
+}
+
+function _onWrong(expected) {
+  _play('wrong');
+  _totalWrong  += 1;
+  _inputLocked  = true;
+
+  const activeQ = _falling.find(q => q.id === _activeId);
+  if (!activeQ) { _inputLocked = false; return; }
+
+  activeQ.wrong = true;
+  _slots = [];
+  _renderAnswerDisplay();
+
+  const el = _cardEl(activeQ.id);
+  if (el) {
+    el.classList.remove('active');
+    el.classList.add('wrong');
+    el.textContent = expected;
+  }
+
+  _loseLife();
+  _requeue({ displayStr: activeQ.displayStr, answerStr: activeQ.answerStr });
+
+  setTimeout(() => {
+    _removeCard(activeQ.id);
+    _inputLocked = false;
+    if (SPEED === 0 && _falling.length === 0) {
+      _spawnNext();
+    }
+    _refreshActive();
+  }, WRONG_MS);
+}
+
+function _loseLife() {
+  if (_gameOver) return;
+  _lives = Math.max(0, _lives - 1);
+  _renderLives();
+  if (_lives <= 0) _endGame();
+}
+
+// ── End game ──────────────────────────────────────────────────────────────────
+
+function _endGame() {
+  if (_gameOver) return;
+  _gameOver = true;
+  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+  _play('gameover');
+  const stars = _computeStars();
+  _saveScore(stars);
+  setTimeout(() => _showResult(stars), 300);
+}
+
+function _computeStars() {
+  if (_totalCorrect === 0) return 0;
+  if (_totalWrong === 0 && SPEED > 0 && _totalCorrect >= PUZZLE_COUNT) return 3;
+  if (_totalCorrect >= PUZZLE_COUNT) return 2;
+  return 1;
+}
+
+function _showResult(stars) {
+  const emojis = ['', '👍', '🎉', '🏆'];
+  const titles = ['GAME OVER', 'Pas mal !', 'Bien joué !', 'Parfait !'];
+  document.getElementById('result-emoji').textContent = emojis[stars];
+  document.getElementById('result-title').textContent = titles[stars];
+  document.getElementById('result-stars').textContent =
+    '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  document.getElementById('result-score').textContent =
+    _score + ' pts · ' + _totalCorrect + ' bonne' + (_totalCorrect > 1 ? 's' : '') +
+    ' · ' + _totalWrong + ' erreur' + (_totalWrong !== 1 ? 's' : '');
+  document.getElementById('result-overlay').style.display = 'flex';
+}
+
+async function _saveScore(stars) {
+  if (!PROFILE_ID) return;
+  try {
+    const gameTypeId = GAME_CONFIG.game_types[MODE] ?? 0;
+    await gameService.saveScore(PROFILE_ID, {
+      game_id: 3, level_id: LEVEL_ID, game_type_id: gameTypeId,
+      score: _score, stars, speed: SPEED,
+    });
+    await gameService.updateProgress(PROFILE_ID, LEVEL_ID, gameTypeId, stars, _score);
+  } catch(e) { console.warn('[saveScore]', e); }
+}
+
+// ── Numpad ────────────────────────────────────────────────────────────────────
+
+function _buildNumpad() {
+  const footer = document.getElementById('numpad');
+  footer.innerHTML = '';
+  ['1','2','3','4','5','6','7','8','9','0',','].forEach(k => {
+    const btn = document.createElement('button');
+    btn.className   = 'cnp-numpad-btn';
+    btn.textContent = k;
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (/^[0-9]$/.test(k)) _handleInput(k);
+      // virgule : ignorée (séparateur auto-géré dans les slots)
+    });
+    footer.appendChild(btn);
   });
 }
 
@@ -86,717 +499,72 @@ function showStartOverlay(onStart) {
 
 async function init() {
   try {
-    levelData = await gameService.getLevelById(LEVEL_ID);
-    if (!levelData) { alert('Niveau introuvable.'); location.href = 'index.html'; return; }
-    document.title = `${levelData.title || levelData.name} — CalcNPlay`;
-    console.log('[level]', {
-      sel_color_override: levelData.sel_color_override,
-      selected_fill:      levelData.selected_fill,
-      selected_stroke:    levelData.selected_stroke,
-      marker_color:       levelData.marker_color,
+    _formats = await fetch('formats.json?v=2').then(r => r.json()).catch(() => []);
+    const level = await gameService.getLevelById(LEVEL_ID);
+    if (!level?.rules) {
+      alert('Niveau non configuré. Ajoutez des règles dans l\'éditeur.');
+      location.href = 'index.html';
+      return;
+    }
+    _rules = level.rules;
+    _fmt   = _formats.find(f => f.id === _rules.computed?.format_id) || _formats[0] || null;
+
+    _updateQLayerBounds();
+    _buildNumpad();
+    _renderLives();
+    _renderScore();
+
+    if (SPEED > 0) {
+      const baseSeconds = SECONDS > 0 ? SECONDS : 8;
+      _fallSeconds   = baseSeconds * FALL_RATIO;
+      _spawnInterval = baseSeconds * 1000;
+    }
+
+    _fillPool(50);
+    _newPuzzleCycle(true);
+
+    _showStartOverlay(() => {
+      _spawnNext();
+      _refreshActive();
+      _lastSpawnTime = performance.now();
+      _startLoop();
     });
 
-    const raw = await gameService.getWords(LEVEL_ID);
-    allWords = raw.filter(w => w.point);
-
-    if (allWords.length === 0) {
-      alert('Ce niveau n\'a pas encore de marqueurs placés.');
-      location.href = 'index.html'; return;
-    }
-
-    renderLives();
-    setupChronoBar();
-    await loadImage();
-
-    if (MODE === 'learning') {
-      _audioUnlocked = true;
-      document.querySelector('.game-lives-area').style.visibility = 'hidden';
-      const stopBtn = document.querySelector('.game-stop-btn');
-      if (stopBtn) { stopBtn.textContent = '←'; stopBtn.title = 'Retour'; }
-      setupLearning();
-    } else {
-      setupPlay();
-      showStartOverlay(() => { if (MODE === 'findword' || MODE === 'listenclick') playWordAudio(activeIdx); });
-    }
-
-  } catch(err) {
-    alert('Erreur : ' + err.message);
+  } catch(e) {
+    console.error('[init]', e);
+    alert('Erreur : ' + e.message);
     location.href = 'index.html';
   }
 }
 
-// ── Layout ────────────────────────────────────────────────────────────────────
-
-function setupChronoBar() {
-  if (!CHRONO || MODE === 'learning') return;
-  const bar  = document.createElement('div');
-  bar.className = 'chrono-bar';
-  const fill = document.createElement('div');
-  fill.id = 'chrono-fill'; fill.className = 'chrono-fill';
-  bar.appendChild(fill);
-  document.getElementById('game-body').prepend(bar);
-}
-
-function loadImage() {
-  return new Promise(resolve => {
-    const img = document.getElementById('game-image');
-    new ResizeObserver(() => renderCurrent()).observe(document.getElementById('game-image-area'));
-    if (!levelData.image_path) { renderCurrent(); resolve(); return; }
-    img.addEventListener('load',  () => { renderCurrent(); resolve(); }, { once: true });
-    img.addEventListener('error', () => resolve(), { once: true });
-    img.src = levelData.image_path;
+function _showStartOverlay(onStart) {
+  const overlay = document.createElement('div');
+  overlay.id = 'start-overlay';
+  overlay.innerHTML = `<button id="start-btn">▶ Commencer</button>`;
+  document.getElementById('game-layout').appendChild(overlay);
+  document.getElementById('start-btn').addEventListener('click', () => {
+    overlay.remove();
+    onStart();
   });
 }
 
-// In findword mode the active point must not be revealed before the player answers
-function renderCurrent() {
-  const hideActive = MODE === 'findword' || MODE === 'listenclick';
-  renderMarkers(hideActive ? -1 : activeIdx);
-}
+window.onAuthChanged = user => {
+  if (!user) { location.href = 'index.html'; return; }
+  init();
+};
+
+// ── Events ────────────────────────────────────────────────────────────────────
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { stopChrono(); location.href = 'index.html'; }
+  if (/^[0-9]$/.test(e.key)) _handleInput(e.key);
 });
 
-// ── Lives & Score ─────────────────────────────────────────────────────────────
+window.addEventListener('resize', _updateQLayerBounds);
 
-function renderCounter() {
-  const el = document.getElementById('game-counter');
-  if (!el) return;
-  el.textContent = `${answeredCorrectly.size} / ${allWords.length}`;
-}
+document.getElementById('result-replay').addEventListener('click', () => location.reload());
+document.getElementById('exit-btn').addEventListener('click', () => { location.href = 'index.html'; });
 
-function renderLives() {
-  const zone = document.getElementById('lives-zone');
-  zone.innerHTML = '';
-  for (let i = 0; i < MAX_LIVES; i++) {
-    const s = document.createElement('span');
-    s.className = `life${i >= lives ? ' lost' : ''}`;
-    s.textContent = '♥';
-    zone.appendChild(s);
-  }
-}
-
-function calcScore() {
-  if (!CHRONO) return SCORE_MIN;
-  const elapsed = (Date.now() - questionStartTime) / 1000;
-  return Math.max(SCORE_MIN, SCORE_MAX - Math.floor((elapsed / TIME_LIMIT) * (SCORE_MAX - SCORE_MIN)));
-}
-
-function addScore(pts) {
-  score += pts;
-  document.getElementById('score-val').textContent = score;
-}
-
-function loseLife() {
-  lives = Math.max(0, lives - 1);
-  renderLives();
-  return lives === 0;
-}
-
-// ── SVG markers ───────────────────────────────────────────────────────────────
-
-function getImageRect() {
-  const img = document.getElementById('game-image');
-  const svg = document.getElementById('game-svg');
-  if (!img.naturalWidth) return null;
-  const iR = img.getBoundingClientRect();
-  const sR = svg.getBoundingClientRect();
-  return { x: iR.left - sR.left, y: iR.top - sR.top, width: iR.width, height: iR.height };
-}
-
-function toSvg(pct, r) {
-  return { px: r.x + (pct.x / 100) * r.width, py: r.y + (pct.y / 100) * r.height };
-}
-
-function mkSvg(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
-
-function lightenColor(hex, factor = 0.55) {
-  if (!hex || !hex.startsWith('#') || hex.length < 7) return '#ffffff';
-  const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
-  const lr = Math.round(r+(255-r)*factor), lg = Math.round(g+(255-g)*factor), lb = Math.round(b+(255-b)*factor);
-  return `#${lr.toString(16).padStart(2,'0')}${lg.toString(16).padStart(2,'0')}${lb.toString(16).padStart(2,'0')}`;
-}
-
-function renderMarkers(highlightIdx = activeIdx, wrongIdx = -1) {
-  const svg = document.getElementById('game-svg');
-  svg.innerHTML = '';
-  const img = document.getElementById('game-image');
-  if (!img || !img.naturalWidth) return;
-  const r = getImageRect();
-  if (!r) return;
-
-  const W = svg.clientWidth  || svg.getBoundingClientRect().width;
-  const H = svg.clientHeight || svg.getBoundingClientRect().height;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-
-  const size    = levelData.marker_size         || 16;
-  const aSize   = levelData.arrow_size          || 10;
-  const color   = levelData.marker_color        || '#000000';
-  const sColor  = levelData.marker_stroke_color || '#ffffff';
-  const sWidth  = levelData.marker_stroke_width || 2;
-  const lStyle  = levelData.line_style          || 'solid';
-  const aHead   = levelData.arrow_head          || 'point';
-  const opacity = (levelData.marker_opacity     || 80) / 100;
-
-  allWords.forEach((w, i) => {
-    if (!w.point) return;
-    const isActive = i === highlightIdx;
-    const isWrong  = i === wrongIdx;
-    const selFill   = levelData.sel_color_override
-      ? (levelData.selected_fill   || '#ffffff')
-      : lightenColor(color);
-    const selStroke = levelData.sel_color_override
-      ? (levelData.selected_stroke || '#6c5ce7')
-      : lightenColor(sColor);
-    const pFill    = isActive ? selFill   : color;
-    const pStroke  = isActive ? selStroke : sColor;
-
-    const { px, py } = toSvg(w.point, r);
-    const wG = mkSvg('g');
-    wG.setAttribute('opacity', isActive ? 1 : opacity);
-
-    // Arrows
-    (w.arrows || []).forEach(a => {
-      const { px: ax, py: ay } = toSvg(a, r);
-
-      const line = mkSvg('line');
-      line.setAttribute('x1', px); line.setAttribute('y1', py);
-      line.setAttribute('x2', ax); line.setAttribute('y2', ay);
-      line.setAttribute('stroke', pFill);
-      line.setAttribute('stroke-width', Math.max(1, sWidth - 1));
-      if (lStyle === 'dashed') line.setAttribute('stroke-dasharray', '7,4');
-      line.setAttribute('stroke-linecap', 'round');
-      wG.appendChild(line);
-
-      if (aHead === 'filled') {
-        const angle = Math.atan2(ay - py, ax - px);
-        const hLen  = aSize * 0.8;
-        const hAng  = Math.PI / 6;
-        const poly  = mkSvg('polygon');
-        poly.setAttribute('points', [
-          `${ax},${ay}`,
-          `${ax - hLen*Math.cos(angle-hAng)},${ay - hLen*Math.sin(angle-hAng)}`,
-          `${ax - hLen*Math.cos(angle+hAng)},${ay - hLen*Math.sin(angle+hAng)}`,
-        ].join(' '));
-        poly.setAttribute('fill', pFill); poly.setAttribute('stroke', pStroke);
-        poly.setAttribute('stroke-width', '1');
-        wG.appendChild(poly);
-      }
-
-      const tipC = mkSvg('circle');
-      tipC.setAttribute('cx', ax); tipC.setAttribute('cy', ay);
-      tipC.setAttribute('r', aSize * 0.35);
-      if (aHead === 'point') {
-        tipC.setAttribute('fill', pFill); tipC.setAttribute('stroke', pStroke);
-        tipC.setAttribute('stroke-width', sWidth);
-      } else {
-        tipC.setAttribute('fill', 'transparent'); tipC.setAttribute('stroke', 'none');
-      }
-      wG.appendChild(tipC);
-    });
-
-    // Point group — outer container (never transforms, so hit area stays fixed)
-    const ptG = mkSvg('g');
-
-    // Fixed hit area: matches visual extent at max zoom (size/2 * 1.35)
-    const hitC = mkSvg('circle');
-    hitC.setAttribute('cx', px); hitC.setAttribute('cy', py);
-    hitC.setAttribute('r', size * 0.675);
-    hitC.setAttribute('fill', 'transparent');
-    hitC.setAttribute('stroke', 'none');
-    hitC.setAttribute('pointer-events', 'all');
-    ptG.appendChild(hitC);
-
-    // Inner visual group — this one scales on hover/active/animations
-    const ptInner = mkSvg('g');
-    ptInner.classList.add('marker-pt-inner');
-    const ptC = mkSvg('circle');
-    ptC.setAttribute('cx', px); ptC.setAttribute('cy', py);
-    ptC.setAttribute('r', size / 2);
-    ptC.setAttribute('fill', pFill); ptC.setAttribute('stroke', pStroke);
-    ptC.setAttribute('stroke-width', sWidth);
-    ptInner.appendChild(ptC);
-    ptG.appendChild(ptInner);
-
-    ptG.classList.add('marker-pt');
-    if (isActive && !isWrong) ptG.classList.add('marker-active-pulse');
-    if (isWrong)              ptG.classList.add('marker-wrong-pulse');
-
-    if (MODE === 'findword' || MODE === 'listenclick' || MODE === 'learning') {
-      ptG.classList.add('marker-clickable');
-      ptG.addEventListener('click', e => { e.stopPropagation(); onMarkerClick(i); });
-    }
-
-    wG.appendChild(ptG);
-    svg.appendChild(wG);
-  });
-}
-
-// ── Learning mode ─────────────────────────────────────────────────────────────
-
-let _learnSortAsc = true;
-
-function setupLearning() {
-  activeIdx = -1;
-
-  const container = document.createElement('div');
-  container.className = 'learning-container'; container.id = 'learning-container';
-
-  container.innerHTML = `
-    <div class="learning-header">
-      <button id="learn-sort-btn" class="learn-sort-btn" title="Trier">A↑</button>
-      <span id="learn-word-count" class="learn-word-count"></span>
-    </div>
-    <div class="learning-list" id="learning-list"></div>
-  `;
-  document.getElementById('game-body').insertBefore(container, document.getElementById('game-image-area'));
-
-  document.getElementById('learn-sort-btn').addEventListener('click', () => {
-    _learnSortAsc = !_learnSortAsc;
-    document.getElementById('learn-sort-btn').textContent = _learnSortAsc ? 'A↑' : 'A↓';
-    renderLearningList(activeIdx);
-  });
-
-  renderLearningList(-1);
-  document.getElementById('question-zone').innerHTML = '';
-  renderMarkers(-1);
-}
-
-function _learningQuestion(selIdx) {
-  const qz = document.getElementById('question-zone');
-  if (!qz) return;
-  if (selIdx < 0 || !allWords[selIdx]) { qz.innerHTML = ''; return; }
-  const w = allWords[selIdx];
-  qz.innerHTML = `<div class="question-learning">` +
-    `<span class="question-word">${esc(w.en || w.fr)}</span>` +
-    (w.fr ? `<span class="question-sep"> / </span><span class="question-fr">${esc(w.fr)}</span>` : '') +
-    `</div>`;
-}
-
-function renderLearningList(selIdx) {
-  const list = document.getElementById('learning-list');
-  if (!list) return;
-
-  const indices = allWords.map((_, i) => i).sort((a, b) => {
-    const cmp = (allWords[a].en || allWords[a].fr).localeCompare(allWords[b].en || allWords[b].fr);
-    return _learnSortAsc ? cmp : -cmp;
-  });
-
-  document.getElementById('learn-word-count').textContent = `${allWords.length} mots`;
-  list.innerHTML = '';
-  indices.forEach(i => {
-    const w = allWords[i];
-    const item = document.createElement('div');
-    item.className = `learn-word-item${i === selIdx ? ' active' : ''}`;
-    item.innerHTML = `<div class="learn-word-en">${esc(w.en || w.fr)}</div>`;
-    item.addEventListener('click', () => { activeIdx = i; renderLearningList(i); renderMarkers(i); _learningQuestion(i); playWordAudio(i); });
-    list.appendChild(item);
-  });
-
-  const displayPos = indices.indexOf(selIdx);
-  if (displayPos >= 0) list.querySelectorAll('.learn-word-item')[displayPos]?.scrollIntoView({ block: 'nearest' });
-  _learningQuestion(selIdx);
-}
-
-function onMarkerClick(idx) {
-  if (MODE === 'learning') {
-    activeIdx = idx; renderLearningList(idx); renderMarkers(idx); _learningQuestion(idx); playWordAudio(idx);
-  } else if (MODE === 'findword' || MODE === 'listenclick') {
-    handleClicWordAnswer(idx);
-  }
-}
-
-// ── Play mode ─────────────────────────────────────────────────────────────────
-
-function setupPlay() {
-  playQueue         = shuffle(allWords.map((_, i) => i));
-  playPos           = 0;
-  answeredCorrectly = new Set();
-  wrongCount        = 0;
-  gameStartTime     = Date.now();
-  renderCounter();
-  nextQuestion();
-}
-
-function nextQuestion() {
-  if (_typeCleanup) { _typeCleanup(); _typeCleanup = null; }
-  if (lives <= 0)               { showEnd(false); return; }
-  if (playPos >= playQueue.length) { showEnd(true);  return; }
-
-  activeIdx         = playQueue[playPos++];
-  questionStartTime = Date.now();
-  locked            = false;
-  _currentAudio     = null;
-  renderCurrent();
-
-  if      (MODE === 'findword')    setupClicWord();
-  else if (MODE === 'listenclick') setupListenClick();
-  else if (MODE === 'typeword')    setupTypeWord();
-  else if (MODE === 'chooseword')  setupParmi3();
-
-  if (CHRONO && _audioUnlocked) {
-    const img = document.getElementById('game-image');
-    const doStart = () => {
-      if (img.complete && img.naturalWidth) startChrono();
-      else img.addEventListener('load', () => startChrono(), { once: true });
-    };
-    if (MODE === 'listenclick' && _currentAudio) {
-      _currentAudio.addEventListener('ended', doStart, { once: true });
-      _currentAudio.addEventListener('error', doStart, { once: true });
-    } else {
-      doStart();
-    }
-  }
-}
-
-// ── Clic on word ──────────────────────────────────────────────────────────────
-
-function setupListenClick() {
-  const zone = document.getElementById('question-zone');
-  zone.innerHTML =
-    `<button class="audio-replay-btn" id="audio-replay-btn">${ICONS.speaker}</button>` +
-    `<div class="question-hint">Cliquez sur le point correspondant à ce que vous entendez</div>`;
-  document.getElementById('audio-replay-btn').addEventListener('click', e => {
-    e.stopPropagation();
-    playWordAudio(activeIdx);
-  });
-  playWordAudio(activeIdx);
-}
-
-function setupClicWord() {
-  const w = allWords[activeIdx];
-  document.getElementById('question-zone').innerHTML =
-    `<div class="question-word">${esc(w.en || w.fr)}</div>` +
-    `<div class="question-hint">Cliquez sur le point correspondant dans l'image</div>`;
-  playWordAudio(activeIdx);
-}
-
-function handleClicWordAnswer(clickedIdx) {
-  if (locked) return;
-  stopChrono();
-  if (clickedIdx === activeIdx) {
-    renderMarkers(activeIdx); // briefly reveal the correct point
-    onCorrect();
-  } else {
-    onWrong();
-    renderMarkers(activeIdx, clickedIdx);
-  }
-}
-
-// ── Type the word ─────────────────────────────────────────────────────────────
-
-const AZERTY_ROWS = [
-  ['A','Z','E','R','T','Y','U','I','O','P'],
-  ['Q','S','D','F','G','H','J','K','L','M'],
-  ['W','X','C','V','B','N','⌫'],
-];
-
-// ── TypeWord rules ────────────────────────────────────────────────────────────
-// Rule 1: spaces in compound words (e.g. "guinea fowl") become visual
-//         word-break separators — the player never types a space.
-
-function twBuildTemplate(answer) {
-  return answer.split('').map(c => {
-    if (/[a-zA-Z]/.test(c)) return { type: 'letter' };
-    if (c === ' ')           return { type: 'space' };
-    return { type: 'sep', char: c };
-  });
-}
-
-function twReconstruct(typed, template) {
-  let li = 0;
-  return template.map(t => {
-    if (t.type === 'letter') return typed[li++];
-    if (t.type === 'space')  return ' ';
-    return t.char;
-  }).join('');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-function setupTypeWord() {
-  const zone   = document.getElementById('question-zone');
-  zone.innerHTML = '';
-
-  const answer      = (allWords[activeIdx].en || '').trim();
-  const template    = twBuildTemplate(answer);
-  const letterCount = template.filter(t => t.type === 'letter').length;
-  let typed = [];
-
-  // ── Letter boxes ──────────────────────────────────────────────────────────
-  const boxes = document.createElement('div');
-  boxes.className = 'type-boxes';
-  const cells = [];
-
-  template.forEach(t => {
-    if (t.type === 'space') {
-      const gap = document.createElement('span');
-      gap.className = 'type-word-gap';
-      boxes.appendChild(gap);
-    } else if (t.type === 'sep') {
-      const sep = document.createElement('span');
-      sep.className = 'type-sep';
-      sep.textContent = t.char;
-      boxes.appendChild(sep);
-    } else {
-      const cell = document.createElement('span');
-      cell.className = 'type-cell';
-      boxes.appendChild(cell);
-      cells.push(cell);
-    }
-  });
-  zone.appendChild(boxes);
-
-  function render() {
-    cells.forEach((cell, i) => {
-      cell.textContent = i < typed.length ? typed[i].toUpperCase() : '';
-      cell.className = 'type-cell' +
-        (i < typed.length ? ' type-cell-filled' : '') +
-        (i === typed.length ? ' type-cell-active' : '');
-    });
-  }
-  render();
-
-  // ── Input handler (shared by keyboard and on-screen keys) ─────────────────
-  function pressKey(key) {
-    if (locked) return;
-    if (key === '⌫') {
-      if (typed.length > 0) { typed.pop(); render(); }
-      return;
-    }
-    if (typed.length < letterCount) {
-      typed.push(key);
-      render();
-      if (typed.length === letterCount) {
-        stopChrono();
-        handleTypeWordAnswer(twReconstruct(typed, template));
-      }
-    }
-  }
-
-  function handleKey(e) {
-    if (e.key === 'Backspace') { e.preventDefault(); pressKey('⌫'); return; }
-    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) pressKey(e.key.toUpperCase());
-  }
-  document.addEventListener('keydown', handleKey);
-
-  // ── On-screen AZERTY keyboard ─────────────────────────────────────────────
-  const kb = document.createElement('div');
-  kb.className = 'type-keyboard';
-  AZERTY_ROWS.forEach(row => {
-    const rowEl = document.createElement('div');
-    rowEl.className = 'type-kb-row';
-    row.forEach(k => {
-      const btn = document.createElement('button');
-      btn.className = 'type-kb-key' + (k === '⌫' ? ' type-kb-del' : '');
-      btn.textContent = k;
-      btn.addEventListener('pointerdown', e => { e.preventDefault(); pressKey(k); });
-      rowEl.appendChild(btn);
-    });
-    kb.appendChild(rowEl);
-  });
-  document.querySelector('.game-layout').appendChild(kb);
-
-  _typeCleanup = () => {
-    document.removeEventListener('keydown', handleKey);
-    kb.remove();
-  };
-}
-
-function handleTypeWordAnswer(answer) {
-  if (locked) return;
-  const w       = allWords[activeIdx];
-  const correct = (w.en || '').trim().toLowerCase();
-  if (answer.toLowerCase() === correct) {
-    playWordAudio(activeIdx);
-    onCorrect();
-  } else {
-    onWrong();
-    playWordAudio(activeIdx);
-    document.getElementById('question-zone').innerHTML =
-      `<div class="question-hint">La bonne réponse était :</div>` +
-      `<div class="question-word" style="color:var(--danger)">${esc(w.en)}</div>`;
-  }
-}
-
-// ── Parmi 3 ───────────────────────────────────────────────────────────────────
-
-function setupParmi3() {
-  const w = allWords[activeIdx];
-  const distractors = allWords
-    .filter((_, i) => i !== activeIdx && (allWords[i].en || allWords[i].fr))
-    .sort(() => Math.random() - .5)
-    .slice(0, 2)
-    .map(o => o.en || o.fr);
-  const choices = shuffle([w.en || w.fr, ...distractors]);
-
-  const zone = document.getElementById('question-zone');
-  zone.innerHTML = '';
-  const hint = document.createElement('div');
-  hint.className = 'question-hint';
-  hint.textContent = 'Quel est le mot correspondant au point actif ?';
-  const btns = document.createElement('div');
-  btns.className = 'question-choices';
-  choices.forEach(c => {
-    const btn = document.createElement('button');
-    btn.className = 'choice-btn'; btn.textContent = c;
-    btn.addEventListener('click', () => handleParmi3Answer(btn, c, w.en || w.fr, btns));
-    btns.appendChild(btn);
-  });
-  zone.appendChild(hint); zone.appendChild(btns);
-}
-
-function handleParmi3Answer(btn, chosen, correct, btns) {
-  if (locked) return;
-  stopChrono();
-  locked = true;
-  btns.querySelectorAll('.choice-btn').forEach(b => {
-    b.disabled = true;
-    if (b.textContent === correct) b.classList.add('correct');
-  });
-  if (chosen === correct) { btn.classList.add('correct'); playWordAudio(activeIdx); onCorrect(); }
-  else                    { btn.classList.add('wrong');   playWordAudio(activeIdx); onWrong();   }
-}
-
-// ── Correct / Wrong ───────────────────────────────────────────────────────────
-
-function onCorrect() {
-  locked = true;
-  addScore(calcScore());
-  answeredCorrectly.add(activeIdx);
-  renderCounter();
-  showFeedback('Correct !', true);
-  document.getElementById('game-svg').querySelectorAll('.marker-active-pulse').forEach(el => {
-    el.classList.replace('marker-active-pulse', 'marker-correct-pulse');
-  });
-  const victory = answeredCorrectly.size >= allWords.length;
-  setTimeout(() => victory ? showEnd(true) : nextQuestion(), FEEDBACK_DELAY_OK);
-}
-
-function onWrong() {
-  locked = true;
-  wrongCount++;
-  const dead = loseLife();
-  showFeedback('Incorrect !', false);
-  // Re-inject 2 positions later in the queue
-  const insertAt = Math.min(playPos + RETRY_OFFSET - 1, playQueue.length);
-  playQueue.splice(insertAt, 0, activeIdx);
-  setTimeout(() => { if (dead) showEnd(false); else nextQuestion(); }, FEEDBACK_DELAY_WRONG);
-}
-
-// ── Chrono ────────────────────────────────────────────────────────────────────
-
-function startChrono() {
-  stopChrono();
-  chronoStart = performance.now();
-  function tick(now) {
-    const elapsed = (now - chronoStart) / 1000;
-    const pct = Math.max(0, 1 - elapsed / TIME_LIMIT);
-    updateChronoBar(pct);
-    if (pct <= 0) { stopChrono(); onChronoOut(); return; }
-    chronoRaf = requestAnimationFrame(tick);
-  }
-  chronoRaf = requestAnimationFrame(tick);
-}
-
-function stopChrono() {
-  if (chronoRaf) { cancelAnimationFrame(chronoRaf); chronoRaf = null; }
-}
-
-function updateChronoBar(pct) {
-  const fill = document.getElementById('chrono-fill');
-  if (!fill) return;
-  fill.style.height = ((1 - pct) * 100) + '%';
-}
-
-function onChronoOut() {
-  if (locked) return;
-  if (MODE === 'typeword') { handleTypeWordAnswer(''); return; }
-  showFeedback('Temps écoulé !', false);
-  onWrong();
-}
-
-// ── Feedback toast ────────────────────────────────────────────────────────────
-
-let _feedbackTimer = null;
-function showFeedback(msg, ok) {
-  const toast = document.getElementById('feedback-toast');
-  toast.textContent = msg;
-  toast.className = `feedback-toast ${ok ? 'correct' : 'wrong'}`;
-  if (_feedbackTimer) clearTimeout(_feedbackTimer);
-  _feedbackTimer = setTimeout(() => toast.classList.add('fade'), ok ? FEEDBACK_DELAY_OK : FEEDBACK_DELAY_WRONG - 300);
-}
-
-// ── End screen ────────────────────────────────────────────────────────────────
-
-function showEnd(victory) {
-  stopChrono();
-  document.getElementById('feedback-toast').className = 'feedback-toast hidden';
-
-  const livesLost = MAX_LIVES - lives;
-  const nbQ       = allWords.length;
-  let stars = 0;
-  if (victory) {
-    if (livesLost === 0 && CHRONO && score > GAME_CONFIG.score3_per_question * nbQ) stars = 3;
-    else if (livesLost === 0) stars = 2;
-    else stars = 1;
-  }
-  const starsStr = MODE === 'learning' ? '' : '★'.repeat(stars) + '☆'.repeat(3 - stars);
-
-  if (PROFILE_ID && MODE !== 'learning') {
-    const gameTypeId = GAME_CONFIG.game_types[MODE] || 1;
-    const duration_s = Math.round((Date.now() - gameStartTime) / 1000);
-    gameService.saveScore(PROFILE_ID, {
-      game_id:      GAME_CONFIG.game_id,
-      game_type_id: gameTypeId,
-      level_id:     LEVEL_ID,
-      score,
-      duration_s,
-      correct:      answeredCorrectly.size,
-      wrong:        wrongCount,
-      stars,
-    }).catch(console.error);
-    if (victory) {
-      gameService.updateProgress(PROFILE_ID, LEVEL_ID, gameTypeId, stars, score).catch(console.error);
-    }
-  }
-
-  const overlay = document.createElement('div');
-  overlay.className = 'end-screen';
-  overlay.innerHTML = `
-    ${victory ? '<div class="end-emoji">🎉</div>' : ''}
-    <div class="end-title">${victory ? 'Niveau terminé !' : 'GAME OVER'}</div>
-    <div class="end-score">${score} point${score !== 1 ? 's' : ''}</div>
-    ${victory ? `<div class="end-stars">${starsStr}</div>` : ''}
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="btn btn-primary"   id="end-retry-btn">Rejouer</button>
-      <button class="btn btn-secondary" id="end-back-btn">Retour</button>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  document.getElementById('end-back-btn').addEventListener('click',  () => location.href = 'index.html');
-  document.getElementById('end-retry-btn').addEventListener('click', () => location.reload());
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function esc(str) {
-  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── Fullscreen ────────────────────────────────────────────────────────────────
-
-(function () {
+(function() {
   const btn      = document.getElementById('fullscreen-btn');
   const expand   = document.getElementById('fs-expand');
   const compress = document.getElementById('fs-compress');
@@ -810,7 +578,3 @@ function esc(str) {
   });
   document.addEventListener('fullscreenchange', update);
 })();
-
-// ── Start ─────────────────────────────────────────────────────────────────────
-
-init();

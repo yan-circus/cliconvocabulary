@@ -26,7 +26,7 @@ window.onAuthChanged = user => {
 
 async function init() {
   try {
-    _formats = await fetch('formats.json').then(r => r.json()).catch(() => []);
+    _formats = await fetch('formats.json?v=2').then(r => r.json()).catch(() => []);
     if (!_formats.length) { alert('Impossible de charger formats.json'); return; }
 
     const level = await editorService.getLevelById(LEVEL_ID);

@@ -8,12 +8,12 @@ const GAME_CONFIG = {
   modes: [
     { slug: 'calcul', id: 0, icon: '🧮', label: 'Calcul mental',
       speed_levels: [
-        { level: 0, label: 'Sans chrono', seconds: 0  },
-        { level: 1, label: 'Très lent',   seconds: 15 },
-        { level: 2, label: 'Lent',        seconds: 10 },
-        { level: 3, label: 'Normal',      seconds: 7  },
-        { level: 4, label: 'Rapide',      seconds: 5  },
-        { level: 5, label: 'Très rapide', seconds: 3  },
+        { level: 0, label: 'Sans chrono', seconds: 0   },
+        { level: 1, label: 'Très lent',   seconds: 13  },
+        { level: 2, label: 'Lent',        seconds: 5   },
+        { level: 3, label: 'Normal',      seconds: 2.5 },
+        { level: 4, label: 'Rapide',      seconds: 2.0 },
+        { level: 5, label: 'Très rapide', seconds: 1.5 },
       ],
       audio_required: false, score_tracking: true },
   ],

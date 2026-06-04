@@ -1,9 +1,9 @@
 [
   {
     "id": "default",
-    "label": "a ○ b = ? (résultat inconnu)",
-    "template": "{op1} {op} {op2} = {?}",
-    "placeholder_display": "?",
+    "label": "a ○ b (résultat inconnu)",
+    "template": "{op1} {op} {op2}",
+    "placeholder_display": "",
     "answer_key": "result"
   },
   {
