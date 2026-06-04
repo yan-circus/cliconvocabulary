@@ -13,5 +13,5 @@ async function _editorNextLevelId() {
 
 const _editorPlatformMethods = {
   updateLevelMeta: (levelDocId, fields) =>
-    db.collection('levels').doc(String(levelDocId)).update(fields),
+    db.collection('levels').doc(String(levelDocId)).set(fields, { merge: true }),
 };

@@ -1,5 +1,5 @@
 // game.js — CalcNPlay
-const VERSION = 'v0.1.0';
+const VERSION = 'v0.2.0';
 console.log('%cCalcNPlay ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
@@ -479,17 +479,34 @@ async function _saveScore(stars) {
 
 // ── Numpad ────────────────────────────────────────────────────────────────────
 
-function _buildNumpad() {
+function _detectNeedsDecimal() {
+  if (_rules.mode === 'list') {
+    return _rules.list.questions.some(q => String(q.a).includes(','));
+  }
+  // Mode computed : échantillonner 60 questions
+  for (let i = 0; i < 60; i++) {
+    const q = _generateComputed();
+    if (!q) break;
+    const key = _fmt?.answer_key || 'result';
+    const val = key === 'op1' ? q.op1 : key === 'op2' ? q.op2 : q.result;
+    if (_num(val).includes(',')) return true;
+  }
+  return false;
+}
+
+function _buildNumpad(showComma) {
   const footer = document.getElementById('numpad');
   footer.innerHTML = '';
-  ['1','2','3','4','5','6','7','8','9','0',','].forEach(k => {
+  const keys = showComma
+    ? ['1','2','3','4','5','6','7','8','9','0',',']
+    : ['1','2','3','4','5','6','7','8','9','0'];
+  keys.forEach(k => {
     const btn = document.createElement('button');
     btn.className   = 'cnp-numpad-btn';
     btn.textContent = k;
     btn.addEventListener('pointerdown', e => {
       e.preventDefault();
       if (/^[0-9]$/.test(k)) _handleInput(k);
-      // virgule : ignorée (séparateur auto-géré dans les slots)
     });
     footer.appendChild(btn);
   });
@@ -510,7 +527,7 @@ async function init() {
     _fmt   = _formats.find(f => f.id === _rules.computed?.format_id) || _formats[0] || null;
 
     _updateQLayerBounds();
-    _buildNumpad();
+    _buildNumpad(_detectNeedsDecimal());
     _renderLives();
     _renderScore();
 

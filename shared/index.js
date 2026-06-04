@@ -2,7 +2,7 @@
 // Requires: game-config.js (GAME_CONFIG), firebase-core.js,
 //           platform-methods.js, firebase-service.js (GAME_ID, gameService)
 
-const VERSION = 'v1.1.0';
+const VERSION = 'v1.2.0';
 console.log(`%c${GAME_CONFIG.name} [index] ${VERSION}`, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const _pfx  = GAME_CONFIG.game_id + '-';
@@ -987,9 +987,7 @@ function _renderLevelCard(grid, lvl, denied, noAudio, isSelected) {
   const audioIcon = _ui.audio && ICONS.speaker && lvl.audio_status === 'complete'
     ? `<span class="level-audio-icon">${ICONS.speaker}</span>` : '';
   card.innerHTML = `
-    ${lvl.image_path
-      ? `<img class="level-card-img" src="${esc(lvl.image_path)}" alt="" loading="lazy">`
-      : `<div class="level-card-img-ph">🖼</div>`}
+    <img class="level-card-img" src="${lvl.image_path ? esc(lvl.image_path) : '../shared/assets/vignette_defaut.png'}" alt="" loading="lazy">
     <div class="level-card-name">${esc(lvl.title || lvl.name)}${audioIcon}</div>
     <div class="level-stars">${_levelStars(lvl)}</div>
     ${denied || noAudio ? `<div class="level-lock-overlay">🔒</div>` : ''}

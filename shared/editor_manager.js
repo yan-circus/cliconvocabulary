@@ -130,11 +130,13 @@ function _renderLevelGrid() {
       ${lvl.valid ? '<div class="level-card-valid">✓ Valide</div>' : ''}
       <div class="level-card-actions">
         <button class="btn btn-sm btn-primary">Éditer</button>
+        <button class="btn btn-sm btn-secondary" title="Dupliquer">⧉</button>
         <button class="btn btn-sm btn-danger">✕</button>
       </div>
     `;
     card.querySelectorAll('.btn')[0].addEventListener('click', () => _openMeta(lvl));
-    card.querySelectorAll('.btn')[1].addEventListener('click', () => _confirmDeleteLevel(lvl));
+    card.querySelectorAll('.btn')[1].addEventListener('click', () => _duplicateLevel(lvl));
+    card.querySelectorAll('.btn')[2].addEventListener('click', () => _confirmDeleteLevel(lvl));
     grid.appendChild(card);
   });
   const newCard = document.createElement('div');
@@ -142,6 +144,26 @@ function _renderLevelGrid() {
   newCard.textContent = '+ Nouveau niveau';
   newCard.addEventListener('click', _openNewLevelModal);
   grid.appendChild(newCard);
+}
+
+async function _duplicateLevel(lvl) {
+  const fam = _state.selectedFamily;
+  if (!fam) return;
+  const name = (lvl.title || lvl.name) + ' (copie)';
+  try {
+    const newLvl = await editorService.createLevel(fam.id, fam.uuid, name, lvl.difficulties || [], lvl.notes || '');
+    // Copier les champs spécifiques au jeu si updateLevelMeta est disponible
+    const extraFields = {};
+    const skip = new Set(['docId','id','uuid','game_id','family_id','family_uuid','name','title','difficulties','notes','date','author']);
+    Object.keys(lvl).forEach(k => { if (!skip.has(k)) extraFields[k] = lvl[k]; });
+    if (Object.keys(extraFields).length) {
+      await editorService.updateLevelMeta(newLvl.docId, extraFields);
+    }
+    _state.levels = await editorService.getLevels(fam.id);
+    _renderLevelGrid();
+  } catch(err) {
+    alert('Erreur lors de la duplication : ' + err.message);
+  }
 }
 
 async function _confirmDeleteFamily(fam) {
@@ -212,6 +234,7 @@ function _openMeta(lvl) {
   });
 
   _populateDiffSelect('meta-diff', lvl.difficulties || []);
+  document.getElementById('meta-valid').checked = !!lvl.valid;
 
   document.getElementById('level-meta-panel').style.display = 'flex';
 }
@@ -227,7 +250,8 @@ async function _handleSaveMeta() {
 
   setLoading(btn, true);
   try {
-    const updates = { name, title: name, difficulties: diffs, notes };
+    const valid   = document.getElementById('meta-valid').checked;
+    const updates = { name, title: name, difficulties: diffs, notes, valid };
     if (newFam && Number(newFam.id) !== Number(_state.level.family_id)) {
       updates.family_id   = Number(newFam.id);
       updates.family_uuid = newFam.uuid;
