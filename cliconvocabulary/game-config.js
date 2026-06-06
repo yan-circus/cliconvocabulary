@@ -21,10 +21,13 @@ const GAME_CONFIG = {
     { slug: 'listenclick', id: 4, icon: '🔊', label: 'Listen & click',
       speed_levels: [{ level: 0, label: 'Sans chrono', seconds: 0 }, { level: 1, label: 'Chrono', seconds: 5 }],
       audio_required: true,  score_tracking: true  },
+    { slug: 'listentype',  id: 5, icon: '🎧', label: 'Listen & type',
+      speed_levels: [{ level: 0, label: 'Sans chrono', seconds: 0 }, { level: 1, label: 'Chrono', seconds: 20 }],
+      audio_required: true,  score_tracking: true  },
   ],
 
   // Backward compat — used by game.js
-  game_types: { learning: 0, findword: 1, chooseword: 2, typeword: 3, listenclick: 4 },
+  game_types: { learning: 0, findword: 1, chooseword: 2, typeword: 3, listenclick: 4, listentype: 5 },
 
   score3_per_question: 500,
 
@@ -42,6 +45,7 @@ const GAME_CONFIG = {
     { title: '⌨ Type the word',     text: 'Un point est mis en évidence dans l\'image. Tapez le mot anglais correspondant.' },
     { title: '🔤 Choose the word',  text: 'Un point est mis en évidence. Choisissez le bon mot parmi 3 propositions.' },
     { title: '🔊 Listen & click',   text: 'Écoutez le mot et cliquez sur le bon point. Le son doit être activé.' },
+    { title: '🎧 Listen & type',    text: 'Écoutez le mot et tapez-le. Utilisez le bouton 🔊 pour réécouter. Le son doit être activé.' },
     { title: '⏱ Chrono',           text: 'Activez le chrono pour gagner plus de points (jusqu\'à 1 000 par bonne réponse rapide). Sans chrono : 100 points fixes. 3 vies par partie.' },
     { title: '★ Étoiles',          text: '★☆☆ Terminé  ·  ★★☆ Sans perdre de vie  ·  ★★★ Sans vie perdue + chrono + score > 500 pts × nb mots. Le mode Apprentissage ne donne pas d\'étoiles.' },
   ],

@@ -118,7 +118,7 @@ async function init() {
       setupLearning();
     } else {
       setupPlay();
-      showStartOverlay(() => { if (MODE === 'findword' || MODE === 'listenclick') playWordAudio(activeIdx); });
+      showStartOverlay(() => { if (MODE === 'findword' || MODE === 'listenclick' || MODE === 'listentype') playWordAudio(activeIdx); });
     }
 
   } catch(err) {
@@ -150,9 +150,9 @@ function loadImage() {
   });
 }
 
-// In findword mode the active point must not be revealed before the player answers
+// Active point hidden before answer in modes where the marker would give away the answer
 function renderCurrent() {
-  const hideActive = MODE === 'findword' || MODE === 'listenclick';
+  const hideActive = MODE === 'findword' || MODE === 'listenclick' || MODE === 'listentype';
   renderMarkers(hideActive ? -1 : activeIdx);
 }
 
@@ -435,6 +435,7 @@ function nextQuestion() {
   if      (MODE === 'findword')    setupClicWord();
   else if (MODE === 'listenclick') setupListenClick();
   else if (MODE === 'typeword')    setupTypeWord();
+  else if (MODE === 'listentype')  setupListenType();
   else if (MODE === 'chooseword')  setupParmi3();
 
   if (CHRONO && _audioUnlocked) {
@@ -443,7 +444,7 @@ function nextQuestion() {
       if (img.complete && img.naturalWidth) startChrono();
       else img.addEventListener('load', () => startChrono(), { once: true });
     };
-    if (MODE === 'listenclick' && _currentAudio) {
+    if ((MODE === 'listenclick' || MODE === 'listentype') && _currentAudio) {
       _currentAudio.addEventListener('ended', doStart, { once: true });
       _currentAudio.addEventListener('error', doStart, { once: true });
     } else {
@@ -515,18 +516,15 @@ function twReconstruct(typed, template) {
   }).join('');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Shared keyboard + letter boxes (used by typeword and listentype) ──────────
 
-function setupTypeWord() {
-  const zone   = document.getElementById('question-zone');
-  zone.innerHTML = '';
-
+function _attachTypeInput() {
+  const zone        = document.getElementById('question-zone');
   const answer      = (allWords[activeIdx].en || '').trim();
   const template    = twBuildTemplate(answer);
   const letterCount = template.filter(t => t.type === 'letter').length;
   let typed = [];
 
-  // ── Letter boxes ──────────────────────────────────────────────────────────
   const boxes = document.createElement('div');
   boxes.className = 'type-boxes';
   const cells = [];
@@ -560,7 +558,6 @@ function setupTypeWord() {
   }
   render();
 
-  // ── Input handler (shared by keyboard and on-screen keys) ─────────────────
   function pressKey(key) {
     if (locked) return;
     if (key === '⌫') {
@@ -583,7 +580,6 @@ function setupTypeWord() {
   }
   document.addEventListener('keydown', handleKey);
 
-  // ── On-screen AZERTY keyboard ─────────────────────────────────────────────
   const kb = document.createElement('div');
   kb.className = 'type-keyboard';
   AZERTY_ROWS.forEach(row => {
@@ -606,14 +602,36 @@ function setupTypeWord() {
   };
 }
 
+function setupTypeWord() {
+  document.getElementById('question-zone').innerHTML = '';
+  _attachTypeInput();
+}
+
+// ── Listen & type (dictation) ─────────────────────────────────────────────────
+
+function setupListenType() {
+  const zone = document.getElementById('question-zone');
+  zone.innerHTML =
+    `<button class="audio-replay-btn" id="audio-replay-btn">${ICONS.speaker}</button>` +
+    `<div class="question-hint">Tapez le mot que vous entendez</div>`;
+  document.getElementById('audio-replay-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    playWordAudio(activeIdx);
+  });
+  _attachTypeInput();
+  playWordAudio(activeIdx);
+}
+
 function handleTypeWordAnswer(answer) {
   if (locked) return;
   const w       = allWords[activeIdx];
   const correct = (w.en || '').trim().toLowerCase();
   if (answer.toLowerCase() === correct) {
+    if (MODE === 'listentype') renderMarkers(activeIdx);
     playWordAudio(activeIdx);
     onCorrect();
   } else {
+    if (MODE === 'listentype') renderMarkers(activeIdx);
     playWordAudio(activeIdx);
     onWrong();
     document.getElementById('question-zone').innerHTML =
@@ -666,7 +684,7 @@ function handleParmi3Answer(btn, chosen, correct, btns) {
 // For typeword/chooseword: wait for both the min delay AND the audio to finish
 // before moving to next question (avoids hearing a word while next marker is shown).
 function _afterAnswer(minDelay, fn) {
-  const waitAudio = AUDIO && _currentAudio && (MODE === 'typeword' || MODE === 'chooseword');
+  const waitAudio = AUDIO && _currentAudio && (MODE === 'typeword' || MODE === 'chooseword' || MODE === 'listentype');
   if (!waitAudio) { setTimeout(fn, minDelay); return; }
   let audioDone = false, delayDone = false;
   const tryNext = () => { if (audioDone && delayDone) fn(); };
@@ -726,7 +744,7 @@ function updateChronoBar(pct) {
 
 function onChronoOut() {
   if (locked) return;
-  if (MODE === 'typeword') { handleTypeWordAnswer(''); return; }
+  if (MODE === 'typeword' || MODE === 'listentype') { handleTypeWordAnswer(''); return; }
   showFeedback('Temps écoulé !', false);
   onWrong();
 }
