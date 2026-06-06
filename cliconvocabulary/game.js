@@ -372,7 +372,7 @@ function _learningQuestion(selIdx) {
   const w = allWords[selIdx];
   qz.innerHTML = `<div class="question-learning">` +
     `<span class="question-word">${esc(w.en || w.fr)}</span>` +
-    (w.fr ? `<span class="question-sep"> / </span><span class="question-fr">${esc(w.fr)}</span>` : '') +
+    (w.fr ? `<span class="question-sep"> → </span><span class="question-fr">${esc(w.fr)}</span>` : '') +
     `</div>`;
 }
 
