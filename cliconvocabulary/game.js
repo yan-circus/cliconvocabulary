@@ -1,6 +1,10 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.4.0';
+const VERSION = 'v0.4.1';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('version-display');
+  if (el) el.textContent = VERSION;
+});
 
 // ── URL params ────────────────────────────────────────────────────────────────
 
@@ -56,10 +60,18 @@ let _currentAudio     = null;
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
 
+function stopCurrentAudio() {
+  if (!_currentAudio) return;
+  _currentAudio.pause();
+  _currentAudio.src = '';
+  _currentAudio = null;
+}
+
 function playWordAudio(idx) {
   if (!AUDIO || !_audioUnlocked) return;
   const url = allWords[idx]?.audio_path;
   if (!url) return;
+  stopCurrentAudio();
   _currentAudio = new Audio(url);
   _currentAudio.play().catch(() => {});
 }
@@ -74,7 +86,7 @@ function showStartOverlay(onStart) {
     _audioUnlocked = true;
     onStart();
     if (CHRONO) {
-      if (MODE === 'listenclick' && _currentAudio) {
+      if ((MODE === 'listenclick' || MODE === 'listentype') && _currentAudio) {
         _currentAudio.addEventListener('ended', () => startChrono(), { once: true });
         _currentAudio.addEventListener('error', () => startChrono(), { once: true });
       } else {
@@ -429,7 +441,7 @@ function nextQuestion() {
   activeIdx         = playQueue[playPos++];
   questionStartTime = Date.now();
   locked            = false;
-  _currentAudio     = null;
+  stopCurrentAudio();
   renderCurrent();
 
   if      (MODE === 'findword')    setupClicWord();
@@ -627,12 +639,12 @@ function handleTypeWordAnswer(answer) {
   const w       = allWords[activeIdx];
   const correct = (w.en || '').trim().toLowerCase();
   if (answer.toLowerCase() === correct) {
-    if (MODE === 'listentype') renderMarkers(activeIdx);
-    playWordAudio(activeIdx);
+    if (MODE === 'listentype') { stopCurrentAudio(); renderMarkers(activeIdx); }
+    else playWordAudio(activeIdx);
     onCorrect();
   } else {
-    if (MODE === 'listentype') renderMarkers(activeIdx);
-    playWordAudio(activeIdx);
+    if (MODE === 'listentype') { stopCurrentAudio(); renderMarkers(activeIdx); }
+    else playWordAudio(activeIdx);
     onWrong();
     document.getElementById('question-zone').innerHTML =
       `<div class="question-hint">La bonne réponse était :</div>` +
@@ -684,7 +696,7 @@ function handleParmi3Answer(btn, chosen, correct, btns) {
 // For typeword/chooseword: wait for both the min delay AND the audio to finish
 // before moving to next question (avoids hearing a word while next marker is shown).
 function _afterAnswer(minDelay, fn) {
-  const waitAudio = AUDIO && _currentAudio && (MODE === 'typeword' || MODE === 'chooseword' || MODE === 'listentype');
+  const waitAudio = AUDIO && _currentAudio && (MODE === 'typeword' || MODE === 'chooseword');
   if (!waitAudio) { setTimeout(fn, minDelay); return; }
   let audioDone = false, delayDone = false;
   const tryNext = () => { if (audioDone && delayDone) fn(); };
