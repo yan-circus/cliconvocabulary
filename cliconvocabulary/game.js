@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.4.1';
+const VERSION = 'v0.4.2';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('version-display');
@@ -164,7 +164,7 @@ function loadImage() {
 
 // Active point hidden before answer in modes where the marker would give away the answer
 function renderCurrent() {
-  const hideActive = MODE === 'findword' || MODE === 'listenclick' || MODE === 'listentype';
+  const hideActive = MODE === 'findword' || MODE === 'listenclick';
   renderMarkers(hideActive ? -1 : activeIdx);
 }
 

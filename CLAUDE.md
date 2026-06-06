@@ -148,12 +148,12 @@ game_types/{id}                    → types de jeu (game_id, id, slug, name, ic
 ```js
 GAME_CONFIG.game_id = 'cliconvocabulary'
 GAME_CONFIG.name    = 'CliConVocabulary'
-GAME_CONFIG.modes   = [ learning(0), findword(1), chooseword(2), typeword(3), listenclick(4) ]
+GAME_CONFIG.modes   = [ learning(0), findword(1), chooseword(2), typeword(3), listenclick(4), listentype(5) ]
 GAME_CONFIG.ui      = { level_display:'thumbnail', audio:true, chrono:true, difficulty:false,
                         access_control:true, item_label:'mot' }
 // Backward compat game.js :
-GAME_CONFIG.game_types = { learning:0, findword:1, … }
-GAME_CONFIG.chrono_s   = { findword:8, chooseword:5, typeword:20, listenclick:5 }
+GAME_CONFIG.game_types = { learning:0, findword:1, chooseword:2, typeword:3, listenclick:4, listentype:5 }
+GAME_CONFIG.chrono_s   = { findword:8, chooseword:5, typeword:20, listenclick:5, listentype:20 }
 ICONS.speaker : SVG inline
 ```
 
@@ -173,10 +173,17 @@ Thin wrapper : charge `game.css` + Firebase SDKs + `game-config.js` + `shared/in
 Contient uniquement `<div id="app"></div>` — tout le DOM est construit par `shared/index.js`.
 
 ### game.html + game.js
-Modes : `learning`, `findword`, `chooseword`, `typeword`, `listenclick`.
-Lit params URL : `level`, `mode`, `chrono`, `audio`, `avatar`, `player`, `profile`.
+Modes : `learning`, `findword`, `chooseword`, `typeword`, `listenclick`, `listentype`.
+Lit params URL : `level`, `mode`, `speed`, `seconds`, `audio`, `avatar`, `player`, `profile`.
 Appelle `gameService.getWords`, `saveScore`, `updateProgress`.
-**`VERSION`** à incrémenter à chaque push.
+**`VERSION`** à incrémenter à chaque push — affiché en bas à droite de game.html (`.version-display`, à gauche du bouton plein écran).
+
+**Comportements audio notables :**
+- `stopCurrentAudio()` — helper qui fait `pause()` + `src=''` pour libérer la ressource
+- `typeword`/`chooseword` : attend la fin de l'audio avant d'afficher la question suivante (`_afterAnswer` avec `waitAudio=true`)
+- `listentype` : audio joué + marqueur actif pendant la question (renforcement image/audio) ; audio stoppé dès validation, **pas** rejoué
+- `listenclick` : même comportement que `listentype` pour le chrono (attend la fin audio avant de démarrer)
+- `learning` : séparateur `→` entre mot anglais et traduction française
 
 ### editor.html + editor.js
 **Éditeur de contenu uniquement** (marqueurs, mots, image, audio).
