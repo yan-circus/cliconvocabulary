@@ -614,8 +614,8 @@ function handleTypeWordAnswer(answer) {
     playWordAudio(activeIdx);
     onCorrect();
   } else {
-    onWrong();
     playWordAudio(activeIdx);
+    onWrong();
     document.getElementById('question-zone').innerHTML =
       `<div class="question-hint">La bonne réponse était :</div>` +
       `<div class="question-word" style="color:var(--danger)">${esc(w.en)}</div>`;
@@ -663,6 +663,18 @@ function handleParmi3Answer(btn, chosen, correct, btns) {
 
 // ── Correct / Wrong ───────────────────────────────────────────────────────────
 
+// For typeword/chooseword: wait for both the min delay AND the audio to finish
+// before moving to next question (avoids hearing a word while next marker is shown).
+function _afterAnswer(minDelay, fn) {
+  const waitAudio = AUDIO && _currentAudio && (MODE === 'typeword' || MODE === 'chooseword');
+  if (!waitAudio) { setTimeout(fn, minDelay); return; }
+  let audioDone = false, delayDone = false;
+  const tryNext = () => { if (audioDone && delayDone) fn(); };
+  _currentAudio.addEventListener('ended', () => { audioDone = true; tryNext(); }, { once: true });
+  _currentAudio.addEventListener('error', () => { audioDone = true; tryNext(); }, { once: true });
+  setTimeout(() => { delayDone = true; tryNext(); }, minDelay);
+}
+
 function onCorrect() {
   locked = true;
   addScore(calcScore());
@@ -673,7 +685,7 @@ function onCorrect() {
     el.classList.replace('marker-active-pulse', 'marker-correct-pulse');
   });
   const victory = answeredCorrectly.size >= allWords.length;
-  setTimeout(() => victory ? showEnd(true) : nextQuestion(), FEEDBACK_DELAY_OK);
+  _afterAnswer(FEEDBACK_DELAY_OK, () => victory ? showEnd(true) : nextQuestion());
 }
 
 function onWrong() {
@@ -684,7 +696,7 @@ function onWrong() {
   // Re-inject 2 positions later in the queue
   const insertAt = Math.min(playPos + RETRY_OFFSET - 1, playQueue.length);
   playQueue.splice(insertAt, 0, activeIdx);
-  setTimeout(() => { if (dead) showEnd(false); else nextQuestion(); }, FEEDBACK_DELAY_WRONG);
+  _afterAnswer(FEEDBACK_DELAY_WRONG, () => { if (dead) showEnd(false); else nextQuestion(); });
 }
 
 // ── Chrono ────────────────────────────────────────────────────────────────────
