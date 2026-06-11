@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.4.2';
+const VERSION = 'v0.4.3';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('version-display');
@@ -81,8 +81,10 @@ function showStartOverlay(onStart) {
   overlay.id = 'start-overlay';
   overlay.innerHTML = `<button id="start-btn">▶ Commencer</button>`;
   document.getElementById('game-body').appendChild(overlay);
+  document.getElementById('question-zone').style.visibility = 'hidden';
   document.getElementById('start-btn').addEventListener('click', () => {
     overlay.remove();
+    document.getElementById('question-zone').style.visibility = '';
     _audioUnlocked = true;
     onStart();
     if (CHRONO) {
@@ -698,8 +700,8 @@ function handleParmi3Answer(btn, chosen, correct, btns) {
 function _afterAnswer(minDelay, fn) {
   const waitAudio = AUDIO && _currentAudio && (MODE === 'typeword' || MODE === 'chooseword');
   if (!waitAudio) { setTimeout(fn, minDelay); return; }
-  let audioDone = false, delayDone = false;
-  const tryNext = () => { if (audioDone && delayDone) fn(); };
+  let audioDone = false, delayDone = false, called = false;
+  const tryNext = () => { if (audioDone && delayDone && !called) { called = true; fn(); } };
   _currentAudio.addEventListener('ended', () => { audioDone = true; tryNext(); }, { once: true });
   _currentAudio.addEventListener('error', () => { audioDone = true; tryNext(); }, { once: true });
   setTimeout(() => { delayDone = true; tryNext(); }, minDelay);
