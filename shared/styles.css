@@ -1,0 +1,17 @@
+/* =====================================================
+   LudoEdu — styles partagés
+   ===================================================== */
+
+/* Breakpoints responsive
+   mobile   : ≤ 750px
+   tablette : 751px – 900px
+   desktop  : > 900px
+   ===================================================== */
+
+@media (max-width: 900px) {
+  /* tablette + mobile */
+}
+
+@media (max-width: 750px) {
+  /* mobile uniquement */
+}

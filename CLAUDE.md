@@ -302,3 +302,25 @@ Ne pas charger `game-config.js` (inutile pour le manager).
 - Auth callback unique : `window.onAuthChanged(user)`
 - Chargement dynamique (editor_manager) : tester `if (_authResolved) window.onAuthChanged(_currentUser)` après avoir défini le callback
 - **Version bump** : `VERSION` dans `shared/index.js` et `game.js` à chaque push
+
+## Responsive design — breakpoints
+
+Trois appareils cibles, définis par `window.innerWidth` :
+
+| Device   | Largeur         |
+|----------|-----------------|
+| Mobile   | ≤ 750 px        |
+| Tablette | 751 px – 900 px |
+| Desktop  | > 900 px        |
+
+**CSS — deux media queries :**
+```css
+@media (max-width: 900px) { /* tablette + mobile */ }
+@media (max-width: 750px) { /* mobile uniquement */ }
+```
+
+**JS — détection device :**
+```js
+const w = window.innerWidth;
+const device = w <= 750 ? 'mobile' : w <= 900 ? 'tablette' : 'desktop';
+```
