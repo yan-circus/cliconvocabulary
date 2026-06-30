@@ -8,9 +8,24 @@
    desktop  : > 900px
    ===================================================== */
 
+/* debug */
+.header-row         { outline: 2px solid red; }
+.family-tabs-scroll { outline: 2px solid green; }
+.index-header       { outline: 2px solid yellow; }
+
 .mode-dev {
   color: #fff;
   font-size: 12px;
+}
+
+/* tablette + desktop : family-tabs-scroll superposé au header */
+.index-layout { position: relative; }
+
+.family-tabs-scroll {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  z-index: 0;
 }
 
 @media (max-width: 900px) {
@@ -18,5 +33,10 @@
 }
 
 @media (max-width: 750px) {
-  /* mobile uniquement */
+  /* mobile : family-tabs-scroll descend sous le header-row */
+  .family-tabs-scroll {
+    position: relative;
+    height: 60px;
+    top: auto; left: auto; right: auto;
+  }
 }

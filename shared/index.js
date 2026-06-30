@@ -100,8 +100,8 @@ function _buildAppHTML() {
         <button id="close-btn" class="icon-btn" title="Fermer">✕</button>
       </div>
     </div>
-    <div id="family-tabs-scroll" class="family-tabs-scroll"></div>
   </header>
+  <div id="family-tabs-scroll" class="family-tabs-scroll"></div>
 
   <div class="level-content">
     <div id="level-grid" class="level-grid${_ui.level_display === 'list' ? ' list-mode' : ''}">

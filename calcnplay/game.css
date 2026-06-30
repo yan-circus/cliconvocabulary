@@ -252,8 +252,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 
 /* Family tabs */
 .family-tabs-scroll {
-  position: absolute; inset: 0;
-  user-select: none; cursor: grab; z-index: 0;
+  user-select: none; cursor: grab;
 }
 .family-tabs-scroll:active { cursor: grabbing; }
 .family-tab {
