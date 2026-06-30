@@ -8,10 +8,11 @@
    desktop  : > 900px
    ===================================================== */
 
-/* debug */
-.header-row         { outline: 2px solid red; }
-.family-tabs-scroll { outline: 2px solid green; }
-.index-header       { outline: 2px solid yellow; }
+/* debug — visible uniquement en mode dev */
+.dev-mode .header-row         { outline: 2px solid red; }
+.dev-mode .family-tabs-scroll { outline: 2px solid green; }
+.dev-mode .index-header       { outline: 2px solid yellow; }
+.dev-mode .sub-level-content  { outline: 2px solid red; }
 
 .mode-dev {
   color: #fff;
@@ -28,12 +29,16 @@
   z-index: 0;
 }
 
+/* les clics passent à travers le header vers family-tabs-scroll (boutons conservent pointer-events: auto) */
+.index-header { pointer-events: none; }
+
 @media (max-width: 900px) {
   /* tablette + mobile */
 }
 
 @media (max-width: 750px) {
   /* mobile : family-tabs-scroll descend sous le header-row */
+  .index-header { pointer-events: auto; }
   .family-tabs-scroll {
     position: relative;
     height: 60px;

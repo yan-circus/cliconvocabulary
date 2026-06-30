@@ -271,11 +271,14 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 
 /* Level grid */
 .level-content {
-  flex: 1; overflow-y: auto; padding: 14px;
-  margin: 0 16px 16px;
+  flex: 1; min-height: 0; overflow: hidden; padding: 14px;
+  margin-top: 0; margin-right: 16px; margin-bottom: 16px; margin-left: 16px;
   background: rgba(0,0,0,.18);
   border-radius: 24px;
   transition: background .4s ease;
+}
+.sub-level-content {
+  height: 100%; overflow-y: auto;
 }
 .level-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px;

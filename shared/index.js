@@ -104,8 +104,10 @@ function _buildAppHTML() {
   <div id="family-tabs-scroll" class="family-tabs-scroll"></div>
 
   <div class="level-content">
-    <div id="level-grid" class="level-grid${_ui.level_display === 'list' ? ' list-mode' : ''}">
-      <div class="loading-msg">Chargement…</div>
+    <div class="sub-level-content">
+      <div id="level-grid" class="level-grid${_ui.level_display === 'list' ? ' list-mode' : ''}">
+        <div class="loading-msg">Chargement…</div>
+      </div>
     </div>
   </div>
 
@@ -1296,6 +1298,7 @@ document.getElementById('help-version').addEventListener('click', () => {
     _devClicks = 0;
     const el = document.getElementById('mode-dev');
     const entering = el.classList.toggle('hidden');
+    document.body.classList.toggle('dev-mode', !entering);
     showToast(entering ? 'Mode développeur désactivé' : 'Mode développeur activé');
     if (!entering) _updateDevInfo();
   }
