@@ -115,7 +115,7 @@ function _buildAppHTML() {
       <div class="footer-lvl-name" id="footer-name"></div>
       <div class="footer-lvl-sub"  id="footer-sub"></div>
     </div>
-    <div class="mode-dev hidden" id="mode-dev">mode dev :</div>
+    <div class="mode-dev hidden" id="mode-dev">mode dev : <span id="dev-info"></span></div>
   </footer>
 </div>
 
@@ -1280,6 +1280,15 @@ document.getElementById('score-overlay').addEventListener('click', e => {
 // ── Help panel ────────────────────────────────────────────────────────────────
 
 document.getElementById('help-version').textContent = `${GAME_CONFIG.name} ${VERSION}`;
+function _updateDevInfo() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const device = w <= 750 ? 'mobile' : w <= 900 ? 'tablette' : 'desktop';
+  document.getElementById('dev-info').textContent = `${device} · ${w}×${h}`;
+}
+window.addEventListener('resize', () => {
+  if (!document.getElementById('mode-dev').classList.contains('hidden')) _updateDevInfo();
+});
+
 let _devClicks = 0;
 document.getElementById('help-version').addEventListener('click', () => {
   _devClicks++;
@@ -1288,6 +1297,7 @@ document.getElementById('help-version').addEventListener('click', () => {
     const el = document.getElementById('mode-dev');
     const entering = el.classList.toggle('hidden');
     showToast(entering ? 'Mode développeur désactivé' : 'Mode développeur activé');
+    if (!entering) _updateDevInfo();
   }
 });
 document.getElementById('help-btn').addEventListener('click', () =>
