@@ -8,6 +8,11 @@
    desktop  : > 900px
    ===================================================== */
 
+.mode-dev {
+  color: #fff;
+  font-size: 12px;
+}
+
 @media (max-width: 900px) {
   /* tablette + mobile */
 }
