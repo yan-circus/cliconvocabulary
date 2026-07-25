@@ -121,7 +121,7 @@ window.editorService = {
     existing.docs.forEach(d => batch.delete(d.ref));
     words.forEach((w, i) => {
       batch.set(colRef.doc(), {
-        langs:      { fr: w.fr || '', en: w.en || '', ...(w.langs || {}) },
+        langs:      { ...(w.langs || {}), fr: w.fr || '', en: w.en || '' },
         point:      w.point      || null,
         arrows:     w.arrows     || [],
         order:      i,

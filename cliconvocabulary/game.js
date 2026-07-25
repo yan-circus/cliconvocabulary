@@ -1,5 +1,5 @@
 // game.js — CliConVocabulary game logic
-const VERSION = 'v0.4.3';
+const VERSION = 'v0.4.4';
 console.log('%cCliConVocabulary ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('version-display');
