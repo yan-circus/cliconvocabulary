@@ -2,7 +2,7 @@
 // Requires: game-config.js (GAME_CONFIG), firebase-core.js,
 //           platform-methods.js, firebase-service.js (GAME_ID, gameService)
 
-const VERSION = 'v1.3.2';
+const VERSION = 'v1.4.4';
 console.log(`%c${GAME_CONFIG.name} [index] ${VERSION}`, 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 const _pfx  = GAME_CONFIG.game_id + '-';
@@ -67,9 +67,6 @@ function _buildAppHTML() {
     </div>` : `<div class="mode-label-single"><span>${first.icon}</span><span>${esc(first.label)}</span></div>`;
 
   const audioHtml = _ui.audio ? `<button id="audio-toggle" class="chrono-header-btn" title="Audio">${_SVG_AUDIO}</button>` : '';
-
-  const accessLink = _ui.access_control
-    ? `<a id="access-btn" href="access.html" class="supervisor-option">🔓 Niveaux autorisés</a>` : '';
 
   const helpSectionsHtml = (GAME_CONFIG.help_sections || []).map(s => `
     <div class="help-section">
@@ -180,80 +177,6 @@ function _buildAppHTML() {
       <div class="divider">ou</div>
       <button id="google-btn" class="btn btn-google btn-full">${_SVG_GOOGLE} Continuer avec Google</button>
       <button id="play-anon" type="button" class="auth-anon btn-full">Jouer sans compte</button>
-    </div>
-  </div>
-</div>
-
-<!-- Supervisor modal -->
-<div id="supervisor-overlay" class="panel-overlay hidden">
-  <div class="center-panel center-panel-xs">
-    <div class="modal-body">
-      <div class="modal-header">
-        <h3>Options superviseur</h3>
-        <button id="supervisor-close" class="icon-btn">✕</button>
-      </div>
-      <div id="supervisor-auth">
-        <p class="supervisor-hint">Entrez votre mot de passe pour confirmer votre identité.</p>
-        <form id="supervisor-reauth-form" class="auth-form">
-          <div class="form-group"><label>Mot de passe</label><input id="supervisor-password" type="password" autocomplete="current-password"></div>
-          <button id="supervisor-reauth-btn" type="submit" class="btn btn-primary btn-full">Confirmer</button>
-          <button id="supervisor-google-btn" type="button" class="btn btn-google btn-full" style="display:none">${_SVG_GOOGLE} Confirmer avec Google</button>
-          <div id="supervisor-auth-error" class="error-msg"></div>
-        </form>
-      </div>
-      <div id="supervisor-options" style="display:none;flex-direction:column;gap:8px;color:#c1c9cb">
-        <button id="add-profile-btn" class="supervisor-option">➕ Ajouter un joueur</button>
-        ${accessLink}
-        <a href="../shared/editor_manager.html?game=${GAME_CONFIG.game_id}" class="supervisor-option">🖊 Éditeur de niveaux</a>
-        <button id="settings-btn" class="supervisor-option">⚙️ Réglages</button>
-        <button id="logout-btn" class="supervisor-option supervisor-option-danger">⬅ Se déconnecter</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Settings panel -->
-<div id="settings-overlay" class="panel-overlay hidden">
-  <div class="center-panel center-panel-sm">
-    <div class="modal-body">
-      <div class="modal-header">
-        <h3>⚙️ Réglages</h3>
-        <button id="settings-close" class="icon-btn">✕</button>
-      </div>
-      <div class="settings-list">
-        <div class="settings-row">
-          <div class="settings-row-info">
-            <div class="settings-row-label">Afficher le classement</div>
-            <div class="settings-row-desc">Les joueurs peuvent voir les scores de tous les utilisateurs dans le panneau Scores.</div>
-          </div>
-          <label class="settings-toggle">
-            <input type="checkbox" id="setting-show-ranking">
-            <span class="settings-toggle-slider"></span>
-          </label>
-        </div>
-      </div>
-      <button id="settings-save-btn" class="btn btn-primary btn-full">Enregistrer</button>
-      <div id="settings-error" class="error-msg"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Add profile modal -->
-<div id="add-profile-overlay" class="panel-overlay hidden">
-  <div class="center-panel center-panel-sm">
-    <div class="modal-body">
-      <div class="modal-header">
-        <h3>Nouveau joueur</h3>
-        <button id="add-profile-close" class="icon-btn">✕</button>
-      </div>
-      <form id="add-profile-form" class="auth-form">
-        <div class="form-group"><label>Prénom</label><input id="add-profile-prenom" type="text" autocomplete="off" required></div>
-        <div class="form-group"><label>Nom (optionnel)</label><input id="add-profile-nom" type="text" autocomplete="off"></div>
-        <p class="avatar-label">Avatar</p>
-        <div id="add-profile-avatar-picker" class="avatar-picker"></div>
-        <button id="add-profile-submit" type="submit" class="btn btn-primary btn-full">Créer le joueur</button>
-        <div id="add-profile-error" class="error-msg"></div>
-      </form>
     </div>
   </div>
 </div>
@@ -402,14 +325,23 @@ async function renderProfilesDropdown() {
   sep2.className = 'dropdown-separator';
   dropdown.appendChild(sep2);
 
-  const lockRow = document.createElement('div');
-  lockRow.className = 'profile-row profile-row-lock';
-  lockRow.innerHTML = `<span class="dropdown-action-label">🔒 Options superviseur</span>`;
-  lockRow.addEventListener('click', () => {
+  const dashRow = document.createElement('div');
+  dashRow.className = 'profile-row profile-row-lock';
+  dashRow.innerHTML = `<span class="dropdown-action-label">🛠 Tableau de bord</span>`;
+  dashRow.addEventListener('click', () => {
     document.getElementById('user-dropdown').classList.add('hidden');
-    openSupervisorOptions();
+    location.href = '../shared/dashboard.html?game=' + GAME_CONFIG.game_id;
   });
-  dropdown.appendChild(lockRow);
+  dropdown.appendChild(dashRow);
+
+  const logoutRow = document.createElement('div');
+  logoutRow.className = 'profile-row profile-row-lock';
+  logoutRow.innerHTML = `<span class="dropdown-action-label">⬅ Se déconnecter</span>`;
+  logoutRow.addEventListener('click', () => {
+    document.getElementById('user-dropdown').classList.add('hidden');
+    gameService.signOut().catch(console.error);
+  });
+  dropdown.appendChild(logoutRow);
 }
 
 // ── Auth button ───────────────────────────────────────────────────────────────
@@ -522,141 +454,13 @@ document.getElementById('google-btn').addEventListener('click', async () => {
   } finally { btn.disabled = false; }
 });
 
-// ── Supervisor modal ──────────────────────────────────────────────────────────
-
-function openSupervisorOptions() {
-  document.getElementById('supervisor-auth').style.display    = '';
-  document.getElementById('supervisor-options').style.display = 'none';
-  document.getElementById('supervisor-password').value        = '';
-  document.getElementById('supervisor-auth-error').textContent = '';
-  const provider = gameService.getSupervisorProvider();
-  document.getElementById('supervisor-google-btn').style.display =
-    provider === 'google.com' ? '' : 'none';
-  document.getElementById('supervisor-overlay').classList.remove('hidden');
-}
-
-document.getElementById('supervisor-close').addEventListener('click', () =>
-  document.getElementById('supervisor-overlay').classList.add('hidden')
-);
-document.getElementById('supervisor-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('supervisor-overlay'))
-    document.getElementById('supervisor-overlay').classList.add('hidden');
-});
-
-document.getElementById('supervisor-reauth-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const password = document.getElementById('supervisor-password').value.trim();
-  const errorEl  = document.getElementById('supervisor-auth-error');
-  errorEl.textContent = '';
-  if (!password) { errorEl.textContent = 'Entrez votre mot de passe.'; return; }
-  const btn = document.getElementById('supervisor-reauth-btn');
-  btn.disabled = true;
-  try {
-    await gameService.reauthWithPassword(password);
-    sessionStorage.setItem('editor_reauth_ok', '1');
-    document.getElementById('supervisor-auth').style.display    = 'none';
-    document.getElementById('supervisor-options').style.display = 'flex';
-  } catch(err) {
-    errorEl.textContent =
-      err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential'
-        ? 'Mot de passe incorrect.' : 'Erreur d\'authentification.';
-  } finally { btn.disabled = false; }
-});
-
-document.getElementById('supervisor-google-btn').addEventListener('click', async () => {
-  const btn = document.getElementById('supervisor-google-btn');
-  btn.disabled = true;
-  try {
-    await gameService.reauthWithGoogle();
-    sessionStorage.setItem('editor_reauth_ok', '1');
-    document.getElementById('supervisor-auth').style.display    = 'none';
-    document.getElementById('supervisor-options').style.display = 'flex';
-  } catch(err) {
-    document.getElementById('supervisor-auth-error').textContent = 'Erreur Google.';
-  } finally { btn.disabled = false; }
-});
-
-document.getElementById('logout-btn').addEventListener('click', () => {
-  document.getElementById('supervisor-overlay').classList.add('hidden');
-  gameService.signOut().catch(console.error);
-});
-
 // ── Settings panel ────────────────────────────────────────────────────────────
+// _supervisorProfile() reste utilisé pour lire show_ranking (panneau Scores) —
+// l'édition de ce réglage se fait maintenant depuis le Tableau de bord (onglet Général).
 
 function _supervisorProfile() {
   return (cachedProfiles || []).find(p => p.is_supervisor) || null;
 }
-
-document.getElementById('settings-btn').addEventListener('click', () => {
-  document.getElementById('supervisor-overlay').classList.add('hidden');
-  const sup = _supervisorProfile();
-  document.getElementById('setting-show-ranking').checked = sup?.show_ranking ?? true;
-  document.getElementById('settings-error').textContent = '';
-  document.getElementById('settings-overlay').classList.remove('hidden');
-});
-document.getElementById('settings-close').addEventListener('click', () =>
-  document.getElementById('settings-overlay').classList.add('hidden')
-);
-document.getElementById('settings-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('settings-overlay'))
-    document.getElementById('settings-overlay').classList.add('hidden');
-});
-document.getElementById('settings-save-btn').addEventListener('click', async () => {
-  const btn   = document.getElementById('settings-save-btn');
-  const errEl = document.getElementById('settings-error');
-  btn.disabled = true; errEl.textContent = '';
-  try {
-    const sup = _supervisorProfile();
-    if (!sup) throw new Error('no supervisor');
-    await gameService.updateSupervisorSettings(sup.id, {
-      show_ranking: document.getElementById('setting-show-ranking').checked,
-    });
-    cachedProfiles = null;
-    await refreshProfilesCache();
-    document.getElementById('settings-overlay').classList.add('hidden');
-  } catch(e) {
-    console.error('[settings]', e);
-    errEl.textContent = 'Erreur lors de la sauvegarde.';
-  } finally { btn.disabled = false; }
-});
-
-// ── Add profile modal ─────────────────────────────────────────────────────────
-
-let addProfileAvatarId = 1;
-
-document.getElementById('add-profile-btn').addEventListener('click', () => {
-  document.getElementById('supervisor-overlay').classList.add('hidden');
-  addProfileAvatarId = 1;
-  document.getElementById('add-profile-prenom').value      = '';
-  document.getElementById('add-profile-nom').value         = '';
-  document.getElementById('add-profile-error').textContent = '';
-  buildAvatarGrid(document.getElementById('add-profile-avatar-picker'), addProfileAvatarId, id => { addProfileAvatarId = id; });
-  document.getElementById('add-profile-overlay').classList.remove('hidden');
-});
-document.getElementById('add-profile-close').addEventListener('click', () =>
-  document.getElementById('add-profile-overlay').classList.add('hidden')
-);
-document.getElementById('add-profile-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('add-profile-overlay'))
-    document.getElementById('add-profile-overlay').classList.add('hidden');
-});
-document.getElementById('add-profile-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const prenom  = document.getElementById('add-profile-prenom').value.trim();
-  const nom     = document.getElementById('add-profile-nom').value.trim();
-  const errorEl = document.getElementById('add-profile-error');
-  errorEl.textContent = '';
-  if (!prenom) { errorEl.textContent = 'Le prénom est requis.'; return; }
-  const btn = document.getElementById('add-profile-submit');
-  btn.disabled = true;
-  try {
-    await gameService.createChildProfile(prenom, nom, addProfileAvatarId);
-    cachedProfiles = null;
-    document.getElementById('add-profile-overlay').classList.add('hidden');
-  } catch(err) {
-    errorEl.textContent = 'Erreur lors de la création.'; console.error(err);
-  } finally { btn.disabled = false; }
-});
 
 // ── Profile settings modal ────────────────────────────────────────────────────
 

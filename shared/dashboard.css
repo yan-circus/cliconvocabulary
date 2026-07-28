@@ -1,0 +1,132 @@
+/* dashboard.css — coquille du tableau de bord superviseur (nav + auth gate) */
+
+.hidden { display: none !important; }
+
+/* ── Auth gate ───────────────────────────────────────────────────────────── */
+
+.db-auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.db-auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 32px;
+  width: 380px;
+  max-width: 92vw;
+}
+
+.db-auth-card h2 { font-size: 16px; margin-bottom: 6px; color: var(--accent); }
+
+.db-auth-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+
+.db-google-btn { margin-top: 8px; display: none; }
+.db-google-btn.visible { display: inline-block; }
+
+#reauth-cancel-btn { margin-top: 8px; }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+
+.db-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.db-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.db-header h1 { font-size: 15px; color: var(--accent); flex: 1; }
+
+.db-home-link {
+  font-size: 18px;
+  line-height: 1;
+  text-decoration: none;
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  transition: background .15s;
+}
+.db-home-link:hover { background: var(--surface2); }
+
+.db-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── Sidebar / tabs ──────────────────────────────────────────────────────── */
+
+.db-sidebar {
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.db-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.db-tab:hover { background: var(--surface2); color: var(--text); }
+.db-tab.active { background: var(--primary); color: #fff; }
+
+.db-tab-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+
+/* ── Content ─────────────────────────────────────────────────────────────── */
+
+.db-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 26px;
+}
+
+.tab-placeholder { color: var(--text-muted); font-size: 13px; }
+
+/* ── Responsive : sidebar → barre horizontale scrollable sous le header ────── */
+
+@media (max-width: 750px) {
+  .db-body { flex-direction: column; }
+  .db-sidebar {
+    width: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px;
+  }
+  .db-tab { flex-shrink: 0; white-space: nowrap; }
+}

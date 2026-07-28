@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de bord — LudoEdu</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="editor_manager.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="dashboard/general-settings.css">
+  <link rel="stylesheet" href="dashboard/users-manager.css">
+  <link rel="stylesheet" href="dashboard/access-levels.css">
+  <link rel="stylesheet" href="dashboard/levels-manager.css">
+</head>
+<body>
+
+<!-- ══ Auth gate ══════════════════════════════════════════════════════════════ -->
+<div id="db-auth-screen" class="db-auth-screen hidden">
+  <div class="db-auth-card">
+    <h2>Tableau de bord</h2>
+    <p class="db-auth-hint">Entrez votre mot de passe pour confirmer votre identité.</p>
+    <form id="reauth-form">
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input id="reauth-password" type="password" autocomplete="current-password">
+      </div>
+      <button id="reauth-btn" type="submit" class="btn btn-primary btn-full">Confirmer</button>
+      <button id="reauth-google-btn" type="button" class="btn btn-secondary btn-full db-google-btn">Confirmer avec Google</button>
+      <button id="reauth-cancel-btn" type="button" class="btn btn-secondary btn-full">Annuler</button>
+      <div id="reauth-error" class="error-msg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ Dashboard ══════════════════════════════════════════════════════════════ -->
+<div id="db-app" class="db-layout hidden">
+  <header class="db-header">
+    <a id="db-home-link" href="#" class="db-home-link" title="Accueil">🏠</a>
+    <h1 id="db-title">Tableau de bord</h1>
+  </header>
+  <div class="db-body">
+    <nav id="db-sidebar" class="db-sidebar"></nav>
+    <section id="db-content" class="db-content"></section>
+  </div>
+</div>
+
+<!-- Firebase SDK CDN -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-core.js"></script>
+<script src="platform-methods.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

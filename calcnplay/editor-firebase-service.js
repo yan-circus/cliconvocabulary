@@ -45,7 +45,7 @@ window.editorService = {
 
   // ── Levels ────────────────────────────────────────────────────────────────
 
-  createLevel: async (familyId, familyUuid, name, difficulties = [], notes = '') => {
+  createLevel: async (familyId, familyUuid, name, difficulties = [], notes = '', source = 'standard', ownerUid = null, isPrivate = true) => {
     const newId = await _editorNextLevelId();
     const now   = new Date().toISOString();
     const data  = {
@@ -58,6 +58,9 @@ window.editorService = {
       title:        name,
       difficulties: Array.isArray(difficulties) ? difficulties : [],
       notes:        notes || '',
+      source:       source,
+      owner_uid:    source === 'standard' ? null : ownerUid,
+      private:      source === 'perso' ? !!isPrivate : false,
       valid:        false,
       rules:        null,
       date:         now,

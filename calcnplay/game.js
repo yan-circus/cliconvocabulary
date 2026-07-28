@@ -1,5 +1,5 @@
 // game.js — CalcNPlay
-const VERSION = 'v0.2.0';
+const VERSION = 'v0.2.3';
 console.log('%cCalcNPlay ' + VERSION + ' [game]', 'color:#6c5ce7;font-weight:bold;font-size:14px');
 
 // ── URL params ────────────────────────────────────────────────────────────────
